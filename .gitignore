@@ -1,0 +1,48 @@
+# Environment variables
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+
+# Node / React Native
+node_modules/
+.expo/
+dist/
+web-build/
+
+# IDE
+.vscode/
+.idea/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+
+# Credentials / secrets
+*.pem
+*.key
+
+# Expo local files
+.expo-shared/
+
+# Packet Tracer backups / temporary
+*.bak
