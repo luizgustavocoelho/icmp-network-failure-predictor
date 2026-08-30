@@ -505,3 +505,41 @@ Current phase:
 Most test cases are currently planned and will be executed as the corresponding features are implemented.
 
 Test results must not be marked as completed before the related functionality exists.
+
+## Network Classification Tests
+
+The network classification service is validated through automated unit and integration tests.
+
+The current classification policy is:
+
+| Condition | Result |
+| --- | --- |
+| Host responds, RTT < 300 ms and packet loss < 1% | `OK` |
+| Host responds, but RTT >= 300 ms or packet loss >= 1% | `RISK` |
+| Host does not respond or packet loss reaches 100% | `FAILURE` |
+
+Boundary testing is included to verify the exact transition points between states.
+
+Examples:
+
+- 299.9 ms latency → `OK`
+- 300.0 ms latency → `RISK`
+- 0.99% packet loss → `OK`
+- 1.00% packet loss → `RISK`
+- 100% packet loss → `FAILURE`
+
+Additional validation covers:
+
+- negative latency rejection;
+- packet loss below 0% rejection;
+- packet loss above 100% rejection;
+- missing latency with successful response;
+- partial packet loss;
+- total packet loss;
+- simultaneous high latency and packet loss.
+
+The measurement persistence tests also verify that classifications are stored in PostgreSQL and returned through the REST API.
+
+Current automated test suite status:
+
+`40 passed`
