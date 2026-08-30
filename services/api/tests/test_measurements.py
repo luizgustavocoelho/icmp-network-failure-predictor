@@ -53,7 +53,7 @@ def test_measure_host_and_persist_measurement(
     assert data["latency_ms"] == 15.5
     assert data["packet_loss_pct"] == 0.0
     assert data["success"] is True
-    assert data["status"] is None
+    assert data["status"] == "OK"
     assert "id" in data
     assert "measured_at" in data
     assert "created_at" in data
@@ -103,7 +103,7 @@ def test_measurement_is_available_in_history(
     assert measurement["latency_ms"] == 22.0
     assert measurement["packet_loss_pct"] == 25.0
     assert measurement["success"] is True
-    assert measurement["status"] is None
+    assert measurement["status"] == "RISK"
 
 
 def test_measurement_history_returns_newest_first(

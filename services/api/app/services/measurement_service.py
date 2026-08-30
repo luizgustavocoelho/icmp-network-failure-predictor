@@ -2,6 +2,9 @@ from sqlalchemy.orm import Session
 
 from app.models.measurement import Measurement
 from app.services.icmp_monitor import ICMPMeasurement
+from app.services.network_classifier import (
+    classify_network_condition,
+)
 
 
 def save_measurement(
@@ -9,13 +12,19 @@ def save_measurement(
     host_id: int,
     icmp_measurement: ICMPMeasurement,
 ) -> Measurement:
+    network_status = classify_network_condition(
+        latency_ms=icmp_measurement.latency_ms,
+        packet_loss_pct=icmp_measurement.packet_loss_pct,
+        success=icmp_measurement.success,
+    )
+
     measurement = Measurement(
         host_id=host_id,
         measured_at=icmp_measurement.measured_at,
         latency_ms=icmp_measurement.latency_ms,
         packet_loss_pct=icmp_measurement.packet_loss_pct,
         success=icmp_measurement.success,
-        status=None,
+        status=network_status.value,
     )
 
     db.add(measurement)

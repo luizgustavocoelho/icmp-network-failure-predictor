@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.services.network_classifier import NetworkStatus
+
 
 class MeasurementResponse(BaseModel):
     id: int
@@ -10,7 +12,7 @@ class MeasurementResponse(BaseModel):
     latency_ms: float | None
     packet_loss_pct: float
     success: bool
-    status: str | None
+    status: NetworkStatus
     created_at: datetime
 
     model_config = ConfigDict(

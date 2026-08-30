@@ -558,3 +558,53 @@ Current status:
 No endpoint should be considered implemented until the corresponding backend functionality exists and has been tested.
 
 This specification may evolve as the project architecture and requirements are refined.
+
+## Network Measurement Classification
+
+Every new ICMP measurement is classified before being persisted.
+
+The `status` property supports the following values:
+
+- `OK`
+- `RISK`
+- `FAILURE`
+
+Example successful measurement:
+
+```json
+{
+  "id": 15,
+  "host_id": 1,
+  "measured_at": "2026-08-30T22:00:00Z",
+  "latency_ms": 18.0,
+  "packet_loss_pct": 0.0,
+  "success": true,
+  "status": "OK",
+  "created_at": "2026-08-30T22:00:00Z"
+}
+
+Example degraded measurement:
+
+{
+  "id": 16,
+  "host_id": 1,
+  "measured_at": "2026-08-30T22:01:00Z",
+  "latency_ms": 350.0,
+  "packet_loss_pct": 0.0,
+  "success": true,
+  "status": "RISK",
+  "created_at": "2026-08-30T22:01:00Z"
+}
+
+Example unavailable host:
+
+{
+  "id": 17,
+  "host_id": 1,
+  "measured_at": "2026-08-30T22:02:00Z",
+  "latency_ms": null,
+  "packet_loss_pct": 100.0,
+  "success": false,
+  "status": "FAILURE",
+  "created_at": "2026-08-30T22:02:00Z"
+}

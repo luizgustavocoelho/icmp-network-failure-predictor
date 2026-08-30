@@ -66,9 +66,9 @@ class Measurement(Base):
         nullable=False,
     )
 
-    status: Mapped[str | None] = mapped_column(
+    status: Mapped[str] = mapped_column(
         String(20),
-        nullable=True,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
