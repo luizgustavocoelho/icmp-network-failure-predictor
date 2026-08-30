@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS measurements (
 
     success BOOLEAN NOT NULL,
 
-    status VARCHAR(20) NOT NULL,
+    status VARCHAR(20),
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS measurements (
 
     CONSTRAINT chk_measurements_status
         CHECK (
-            status IN ('OK', 'RISK', 'FAILURE')
+            status IS NULL
+            OR status IN ('OK', 'RISK', 'FAILURE')
         )
 );
 

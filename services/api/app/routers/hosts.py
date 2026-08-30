@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.host import Host
+from app.models.measurement import Measurement
 from app.schemas.host import HostCreate, HostResponse, HostUpdate
-
+from app.schemas.measurement import MeasurementResponse
+from app.services.icmp_monitor import ping_host
+from app.services.measurement_service import save_measurement
 
 router = APIRouter(
     prefix="/hosts",
@@ -114,3 +117,66 @@ def update_host(
         )
 
     return host
+
+
+@router.post(
+    "/{host_id}/measure",
+    response_model=MeasurementResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def measure_host(
+    host_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    if not host.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Host is inactive.",
+        )
+
+    icmp_measurement = ping_host(
+        host=str(host.ip_address),
+    )
+
+    measurement = save_measurement(
+        db=db,
+        host_id=host.id,
+        icmp_measurement=icmp_measurement,
+    )
+
+    return measurement
+
+
+@router.get(
+    "/{host_id}/measurements",
+    response_model=list[MeasurementResponse],
+)
+def list_host_measurements(
+    host_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    query = (
+        select(Measurement)
+        .where(Measurement.host_id == host_id)
+        .order_by(Measurement.measured_at.desc())
+    )
+
+    measurements = db.scalars(query).all()
+
+    return measurements
