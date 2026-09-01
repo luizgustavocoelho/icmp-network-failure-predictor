@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.host import Host
 from app.models.measurement import Measurement
+from app.models.prediction import Prediction
 from app.schemas.host import HostCreate, HostResponse, HostUpdate
 from app.schemas.measurement import (
     MeasurementResponse,
@@ -367,5 +368,71 @@ def predict_host_condition(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+    return prediction
+
+@router.get(
+    "/{host_id}/predictions",
+    response_model=list[PredictionResponse],
+)
+def list_host_predictions(
+    host_id: int,
+    db: Session = Depends(get_db),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=500,
+    ),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    query = (
+        select(Prediction)
+        .where(Prediction.host_id == host_id)
+        .order_by(Prediction.generated_at.desc())
+        .limit(limit)
+    )
+
+    predictions = db.scalars(query).all()
+
+    return predictions
+
+
+@router.get(
+    "/{host_id}/predictions/latest",
+    response_model=PredictionResponse,
+)
+def get_latest_host_prediction(
+    host_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    query = (
+        select(Prediction)
+        .where(Prediction.host_id == host_id)
+        .order_by(Prediction.generated_at.desc())
+        .limit(1)
+    )
+
+    prediction = db.scalars(query).first()
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No predictions found for this host.",
+        )
 
     return prediction
