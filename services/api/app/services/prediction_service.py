@@ -184,6 +184,7 @@ def calculate_prediction(
 def generate_prediction(
     db: Session,
     host_id: int,
+    forecast_for: datetime | None = None,
 ) -> Prediction:
     query = (
         select(Measurement)
@@ -209,12 +210,29 @@ def generate_prediction(
             )
         )
 
-    forecast_for = (
-        datetime.now(timezone.utc)
-        + timedelta(
-            minutes=DEFAULT_FORECAST_MINUTES
+    now = datetime.now(timezone.utc)
+
+    if forecast_for is None:
+        forecast_for = (
+            now
+            + timedelta(
+                minutes=DEFAULT_FORECAST_MINUTES
+            )
         )
+
+    if forecast_for.tzinfo is None:
+        raise ValueError(
+            "forecast_for must include timezone information."
+        )
+
+    forecast_for = forecast_for.astimezone(
+        timezone.utc
     )
+
+    if forecast_for <= now:
+        raise ValueError(
+            "forecast_for must be in the future."
+        )
 
     result = calculate_prediction(
         measurements=measurements,

@@ -18,7 +18,10 @@ from app.services.measurement_service import save_measurement
 from app.services.network_classifier import NetworkStatus
 from app.models.alert import Alert
 from app.schemas.alert import AlertResponse
-from app.schemas.prediction import PredictionResponse
+from app.schemas.prediction import (
+    PredictionRequest,
+    PredictionResponse,
+)
 from app.services.prediction_service import generate_prediction
 
 
@@ -378,6 +381,8 @@ def predict_host_condition(
 def list_host_predictions(
     host_id: int,
     db: Session = Depends(get_db),
+    start_at: datetime | None = None,
+    end_at: datetime | None = None,
     limit: int = Query(
         default=100,
         ge=1,
@@ -392,17 +397,39 @@ def list_host_predictions(
             detail="Host not found.",
         )
 
+    if (
+        start_at is not None
+        and end_at is not None
+        and start_at > end_at
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_at cannot be later than end_at.",
+        )
+
+    query = select(Prediction).where(
+        Prediction.host_id == host_id
+    )
+
+    if start_at is not None:
+        query = query.where(
+            Prediction.forecast_for >= start_at
+        )
+
+    if end_at is not None:
+        query = query.where(
+            Prediction.forecast_for <= end_at
+        )
+
     query = (
-        select(Prediction)
-        .where(Prediction.host_id == host_id)
-        .order_by(Prediction.generated_at.desc())
+        query
+        .order_by(Prediction.forecast_for.asc())
         .limit(limit)
     )
 
     predictions = db.scalars(query).all()
 
     return predictions
-
 
 @router.get(
     "/{host_id}/predictions/latest",
@@ -434,5 +461,39 @@ def get_latest_host_prediction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No predictions found for this host.",
         )
+
+    return prediction
+
+
+@router.post(
+    "/{host_id}/predictions/forecast",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def predict_host_condition_at_time(
+    host_id: int,
+    prediction_request: PredictionRequest,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    try:
+        prediction = generate_prediction(
+            db=db,
+            host_id=host_id,
+            forecast_for=prediction_request.forecast_for,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     return prediction
