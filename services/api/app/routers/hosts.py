@@ -17,6 +17,9 @@ from app.services.measurement_service import save_measurement
 from app.services.network_classifier import NetworkStatus
 from app.models.alert import Alert
 from app.schemas.alert import AlertResponse
+from app.schemas.prediction import PredictionResponse
+from app.services.prediction_service import generate_prediction
+
 
 router = APIRouter(
     prefix="/hosts",
@@ -335,3 +338,34 @@ def list_host_alerts(
     alerts = db.scalars(query).all()
 
     return alerts
+
+@router.post(
+    "/{host_id}/prediction",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def predict_host_condition(
+    host_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    try:
+        prediction = generate_prediction(
+            db=db,
+            host_id=host_id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    return prediction
