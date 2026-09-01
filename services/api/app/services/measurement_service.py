@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 
 from app.models.measurement import Measurement
+from app.services.alert_service import (
+    create_alert_for_measurement,
+)
 from app.services.icmp_monitor import ICMPMeasurement
 from app.services.network_classifier import (
     classify_network_condition,
@@ -28,6 +31,14 @@ def save_measurement(
     )
 
     db.add(measurement)
+
+    db.flush()
+
+    create_alert_for_measurement(
+        db=db,
+        measurement=measurement,
+    )
+
     db.commit()
     db.refresh(measurement)
 

@@ -10,7 +10,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models.host import Host
 from app.models.measurement import Measurement
-
+from app.models.alert import Alert
 
 load_dotenv(".env.test")
 
@@ -49,6 +49,7 @@ def prepare_test_database():
 @pytest.fixture(autouse=True)
 def clean_database():
     with Session(test_engine) as db:
+        db.execute(delete(Alert))
         db.execute(delete(Measurement))
         db.execute(delete(Host))
         db.commit()

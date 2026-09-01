@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.database import Base, engine
-from app.models import Host, Measurement
+from app.models import Alert, Host, Measurement
 from app.routers.hosts import router as hosts_router
 
 

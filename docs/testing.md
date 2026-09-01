@@ -543,3 +543,22 @@ The measurement persistence tests also verify that classifications are stored in
 Current automated test suite status:
 
 `40 passed`
+
+## Historical Analysis and Alert Tests
+
+FR05 includes automated tests for:
+
+- history retrieval by host;
+- status filtering;
+- date and time filtering;
+- result limits;
+- invalid period validation;
+- historical summary statistics;
+- empty history summaries;
+- healthy measurements without alerts;
+- warning alerts for `RISK`;
+- critical alerts for `FAILURE`;
+- alert-to-measurement relationships;
+- nonexistent host handling.
+
+Historical and alert behavior is tested using controlled ICMP measurements rather than external network dependencies.
