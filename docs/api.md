@@ -700,3 +700,25 @@ Prediction Fields
 - `confidence: reserved for a future defensible confidence metric.`
 
 The default forecast horizon is currently 5 minutes.
+
+## Prediction Queries
+
+Generated predictions can be retrieved through:
+
+`GET /hosts/{host_id}/predictions`
+
+The endpoint returns stored predictions ordered by most recently generated first.
+
+An optional `limit` parameter controls the maximum number of returned records.
+
+Example:
+
+`GET /hosts/1/predictions?limit=10`
+
+The latest available prediction can be retrieved through:
+
+`GET /hosts/{host_id}/predictions/latest`
+
+If the host has no generated predictions, the latest prediction endpoint returns:
+
+`404 Not Found`

@@ -584,3 +584,15 @@ Current coverage includes:
 External network connectivity is not required for prediction tests because controlled historical measurements are used.
 
 The prediction tests validate the statistical baseline independently from the ICMP collection layer.
+
+## Prediction Query Tests
+
+FR07 validates:
+
+- prediction history retrieval;
+- latest prediction retrieval;
+- prediction result limiting;
+- hosts without predictions;
+- nonexistent host handling.
+
+Stored predictions can therefore be consumed independently from the prediction generation process.
