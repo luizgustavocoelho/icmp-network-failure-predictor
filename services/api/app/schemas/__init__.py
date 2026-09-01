@@ -10,6 +10,11 @@ from app.schemas.measurement import (
 
 from app.schemas.alert import AlertResponse, AlertSeverity
 
+from app.schemas.recommendation import (
+    ActivityRecommendationResponse,
+    RecommendationResponse,
+)
+
 __all__ = [
     "HostCreate",
     "HostResponse",
@@ -17,4 +22,6 @@ __all__ = [
     "MeasurementSummaryResponse",
     "AlertResponse",
     "AlertSeverity",
+    "ActivityRecommendationResponse",
+    "RecommendationResponse",
 ]

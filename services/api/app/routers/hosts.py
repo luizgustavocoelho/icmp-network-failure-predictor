@@ -23,7 +23,13 @@ from app.schemas.prediction import (
     PredictionResponse,
 )
 from app.services.prediction_service import generate_prediction
-
+from app.schemas.recommendation import (
+    ActivityRecommendationResponse,
+    RecommendationResponse,
+)
+from app.services.recommendation_service import (
+    generate_activity_recommendations,
+)
 
 router = APIRouter(
     prefix="/hosts",
@@ -497,3 +503,64 @@ def predict_host_condition_at_time(
         ) from exc
 
     return prediction
+
+
+@router.get(
+    "/{host_id}/predictions/{prediction_id}/recommendations",
+    response_model=RecommendationResponse,
+)
+def get_activity_recommendations(
+    host_id: int,
+    prediction_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    prediction = db.get(
+        Prediction,
+        prediction_id,
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prediction not found.",
+        )
+
+    if prediction.host_id != host_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Prediction not found for this host."
+            ),
+        )
+
+    prediction_status = NetworkStatus(
+        prediction.predicted_status
+    )
+
+    recommendations = (
+        generate_activity_recommendations(
+            network_status=prediction_status,
+        )
+    )
+
+    return RecommendationResponse(
+        host_id=host_id,
+        prediction_id=prediction.id,
+        predicted_status=prediction_status,
+        recommendations=[
+            ActivityRecommendationResponse(
+                activity=recommendation.activity,
+                suitability=recommendation.suitability,
+                message=recommendation.message,
+            )
+            for recommendation in recommendations
+        ],
+    )

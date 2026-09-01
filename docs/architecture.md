@@ -631,3 +631,56 @@ Future versions may include:
 - prediction error tracking;
 - adaptive baselines;
 - more advanced statistical or machine learning models.
+
+## Activity Recommendation Layer
+
+The activity recommendation layer transforms predicted network conditions into understandable guidance for end users.
+
+The processing flow is:
+
+Historical Measurements
+→ Prediction Engine
+→ Predicted Network Status
+→ Recommendation Engine
+→ Mobile/API Response
+
+Recommendations are derived from stored predictions rather than stored as independent database entities.
+
+This avoids duplicated data and guarantees that recommendation results remain traceable to the prediction used to generate them.
+
+### Supported Activities
+
+The initial recommendation engine supports:
+
+- videoconference;
+- streaming;
+- online gaming;
+- web browsing;
+- file upload.
+
+### Recommendation States
+
+Each activity receives one of three suitability states:
+
+- recommended;
+- caution;
+- not_recommended.
+
+The recommendation state is accompanied by a textual explanation.
+
+This ensures that suitability is not communicated using color alone and prepares the data model for accessible mobile presentation.
+
+### Design Rationale
+
+Recommendation logic is isolated in its own service.
+
+This allows future versions to consider additional factors such as:
+
+- predicted latency;
+- predicted packet loss;
+- jitter;
+- application-specific thresholds;
+- user-selected activity requirements;
+- historical reliability.
+
+The initial implementation intentionally uses the predicted network status as its primary decision input.
