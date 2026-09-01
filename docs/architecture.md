@@ -571,3 +571,63 @@ Alerts are generated automatically during measurement persistence.
 `FAILURE` measurements generate critical alerts.
 
 Alerts maintain a reference to the measurement that caused them, providing traceability between network events and notifications.
+
+## Prediction Engine
+
+The prediction engine uses recent historical network measurements to estimate near-future connectivity conditions.
+
+The current prediction flow is:
+
+`Historical Measurements → Recent Window → Linear Trend → Predicted Metrics → Network Classification → Prediction Storage`
+
+### Current Strategy
+
+The initial prediction engine uses a simple linear regression over recent measurements.
+
+The current configuration uses:
+
+- minimum of 3 historical measurements;
+- up to the 5 most recent measurements;
+- a default forecast horizon of 5 minutes.
+
+The engine independently predicts:
+
+- round-trip latency;
+- packet loss.
+
+The predicted metrics are then processed by the existing network classification service to generate:
+
+- `OK`;
+- `RISK`;
+- `FAILURE`.
+
+### Design Principles
+
+The current model is intentionally simple, transparent and explainable.
+
+It is a statistical baseline rather than a complex machine learning model.
+
+This allows the project to:
+
+- validate the prediction pipeline;
+- test trend detection objectively;
+- avoid unsupported claims about artificial intelligence;
+- evolve the prediction strategy later without changing the monitoring or persistence layers.
+
+### Prediction Confidence
+
+Prediction confidence is currently stored as `null`.
+
+No confidence percentage is generated until a defensible confidence calculation is implemented.
+
+### Future Evolution
+
+Future versions may include:
+
+- larger historical windows;
+- rolling averages;
+- jitter;
+- time-of-day patterns;
+- prediction error tracking;
+- adaptive baselines;
+- more advanced statistical or machine learning models.

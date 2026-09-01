@@ -562,3 +562,25 @@ FR05 includes automated tests for:
 - nonexistent host handling.
 
 Historical and alert behavior is tested using controlled ICMP measurements rather than external network dependencies.
+
+## Prediction Engine Tests
+
+The prediction engine is validated through unit and integration tests.
+
+Current coverage includes:
+
+- increasing latency trends;
+- healthy network prediction;
+- degraded network prediction;
+- failure prediction;
+- packet loss lower-bound protection;
+- packet loss upper-bound protection;
+- insufficient historical data;
+- prediction API response;
+- future forecast timestamps;
+- prediction persistence;
+- nonexistent host handling.
+
+External network connectivity is not required for prediction tests because controlled historical measurements are used.
+
+The prediction tests validate the statistical baseline independently from the ICMP collection layer.

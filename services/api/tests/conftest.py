@@ -11,6 +11,7 @@ from app.main import app
 from app.models.host import Host
 from app.models.measurement import Measurement
 from app.models.alert import Alert
+from app.models.prediction import Prediction
 
 load_dotenv(".env.test")
 
@@ -50,6 +51,7 @@ def prepare_test_database():
 def clean_database():
     with Session(test_engine) as db:
         db.execute(delete(Alert))
+        db.execute(delete(Prediction))
         db.execute(delete(Measurement))
         db.execute(delete(Host))
         db.commit()

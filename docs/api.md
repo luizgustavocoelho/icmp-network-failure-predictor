@@ -658,3 +658,45 @@ Alert generation follows the network classification:
 - `FAILURE` → `critical`
 
 Each generated alert references the measurement that triggered it when applicable.
+
+## Connectivity Prediction
+
+A near-future connectivity prediction can be generated through:
+
+`POST /hosts/{host_id}/prediction`
+
+The prediction engine requires at least 3 historical measurements.
+
+If insufficient historical data is available, the API returns:
+
+`422 Unprocessable Entity`
+
+Example:
+
+```json
+{
+  "detail": "At least 3 measurements are required to generate a prediction."
+}
+
+A successful prediction returns:
+
+{
+  "id": 1,
+  "host_id": 1,
+  "generated_at": "2026-09-01T20:00:00Z",
+  "forecast_for": "2026-09-01T20:05:00Z",
+  "predicted_latency_ms": 35.0,
+  "predicted_packet_loss_pct": 0.0,
+  "predicted_status": "OK",
+  "confidence": null
+}
+
+Prediction Fields
+- `generated_at: time when the prediction was generated;`
+- `forecast_for: future time represented by the prediction;`
+- `predicted_latency_ms: estimated round-trip latency;`
+- `predicted_packet_loss_pct: estimated packet loss;`
+- `predicted_status: predicted network condition;`
+- `confidence: reserved for a future defensible confidence metric.`
+
+The default forecast horizon is currently 5 minutes.
