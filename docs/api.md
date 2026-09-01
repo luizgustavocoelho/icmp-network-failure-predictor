@@ -608,3 +608,53 @@ Example unavailable host:
   "status": "FAILURE",
   "created_at": "2026-08-30T22:02:00Z"
 }
+
+## Measurement History
+
+Historical measurements can be retrieved through:
+
+`GET /hosts/{host_id}/measurements`
+
+The endpoint supports optional filters:
+
+- `status`
+- `start_at`
+- `end_at`
+- `limit`
+
+Example:
+
+`GET /hosts/1/measurements?status=RISK&limit=10`
+
+Results are returned with the most recent measurement first.
+
+## Measurement Summary
+
+Aggregated historical statistics are available through:
+
+`GET /hosts/{host_id}/measurements/summary`
+
+The response includes:
+
+- total number of measurements;
+- average latency;
+- minimum latency;
+- maximum latency;
+- average packet loss;
+- number of `OK` measurements;
+- number of `RISK` measurements;
+- number of `FAILURE` measurements.
+
+## Alerts
+
+Alerts can be retrieved through:
+
+`GET /hosts/{host_id}/alerts`
+
+Alert generation follows the network classification:
+
+- `OK` → no alert
+- `RISK` → `warning`
+- `FAILURE` → `critical`
+
+Each generated alert references the measurement that triggered it when applicable.

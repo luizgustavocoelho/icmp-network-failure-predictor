@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -7,9 +8,15 @@ from app.database import get_db
 from app.models.host import Host
 from app.models.measurement import Measurement
 from app.schemas.host import HostCreate, HostResponse, HostUpdate
-from app.schemas.measurement import MeasurementResponse
+from app.schemas.measurement import (
+    MeasurementResponse,
+    MeasurementSummaryResponse,
+)
 from app.services.icmp_monitor import ping_host
 from app.services.measurement_service import save_measurement
+from app.services.network_classifier import NetworkStatus
+from app.models.alert import Alert
+from app.schemas.alert import AlertResponse
 
 router = APIRouter(
     prefix="/hosts",
@@ -162,6 +169,153 @@ def measure_host(
 def list_host_measurements(
     host_id: int,
     db: Session = Depends(get_db),
+    network_status: NetworkStatus | None = Query(
+        default=None,
+        alias="status",
+    ),
+    start_at: datetime | None = None,
+    end_at: datetime | None = None,
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=500,
+    ),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    if (
+        start_at is not None
+        and end_at is not None
+        and start_at > end_at
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_at cannot be later than end_at.",
+        )
+
+    query = select(Measurement).where(
+        Measurement.host_id == host_id
+    )
+
+    if network_status is not None:
+        query = query.where(
+            Measurement.status == network_status.value
+        )
+
+    if start_at is not None:
+        query = query.where(
+            Measurement.measured_at >= start_at
+        )
+
+    if end_at is not None:
+        query = query.where(
+            Measurement.measured_at <= end_at
+        )
+
+    query = (
+        query
+        .order_by(Measurement.measured_at.desc())
+        .limit(limit)
+    )
+
+    measurements = db.scalars(query).all()
+
+    return measurements
+
+
+@router.get(
+    "/{host_id}/measurements/summary",
+    response_model=MeasurementSummaryResponse,
+)
+def get_measurement_summary(
+    host_id: int,
+    db: Session = Depends(get_db),
+):
+    host = db.get(Host, host_id)
+
+    if host is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Host not found.",
+        )
+
+    query = select(
+        func.count(Measurement.id).label(
+            "total_measurements"
+        ),
+        func.avg(Measurement.latency_ms).label(
+            "average_latency_ms"
+        ),
+        func.min(Measurement.latency_ms).label(
+            "minimum_latency_ms"
+        ),
+        func.max(Measurement.latency_ms).label(
+            "maximum_latency_ms"
+        ),
+        func.avg(Measurement.packet_loss_pct).label(
+            "average_packet_loss_pct"
+        ),
+        func.count(Measurement.id)
+        .filter(Measurement.status == "OK")
+        .label("ok_count"),
+        func.count(Measurement.id)
+        .filter(Measurement.status == "RISK")
+        .label("risk_count"),
+        func.count(Measurement.id)
+        .filter(Measurement.status == "FAILURE")
+        .label("failure_count"),
+    ).where(
+        Measurement.host_id == host_id
+    )
+
+    result = db.execute(query).one()
+
+    return MeasurementSummaryResponse(
+        host_id=host_id,
+        total_measurements=result.total_measurements,
+        average_latency_ms=(
+            float(result.average_latency_ms)
+            if result.average_latency_ms is not None
+            else None
+        ),
+        minimum_latency_ms=(
+            float(result.minimum_latency_ms)
+            if result.minimum_latency_ms is not None
+            else None
+        ),
+        maximum_latency_ms=(
+            float(result.maximum_latency_ms)
+            if result.maximum_latency_ms is not None
+            else None
+        ),
+        average_packet_loss_pct=(
+            float(result.average_packet_loss_pct)
+            if result.average_packet_loss_pct is not None
+            else None
+        ),
+        ok_count=result.ok_count,
+        risk_count=result.risk_count,
+        failure_count=result.failure_count,
+    )
+
+@router.get(
+    "/{host_id}/alerts",
+    response_model=list[AlertResponse],
+)
+def list_host_alerts(
+    host_id: int,
+    db: Session = Depends(get_db),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=500,
+    ),
 ):
     host = db.get(Host, host_id)
 
@@ -172,11 +326,12 @@ def list_host_measurements(
         )
 
     query = (
-        select(Measurement)
-        .where(Measurement.host_id == host_id)
-        .order_by(Measurement.measured_at.desc())
+        select(Alert)
+        .where(Alert.host_id == host_id)
+        .order_by(Alert.created_at.desc())
+        .limit(limit)
     )
 
-    measurements = db.scalars(query).all()
+    alerts = db.scalars(query).all()
 
-    return measurements
+    return alerts

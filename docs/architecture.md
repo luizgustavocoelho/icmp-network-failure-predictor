@@ -544,3 +544,30 @@ Current status:
 The architecture may evolve throughout the project.
 
 Relevant architectural changes should be documented in this file so that the repository reflects the actual implementation.
+
+## Historical Analysis and Alert Layer
+
+Stored network measurements are exposed through historical query and aggregation endpoints.
+
+The flow is:
+
+`ICMP → Classification → Measurement Storage → Historical Analysis → Alerts`
+
+Historical analysis supports:
+
+- filtering by network status;
+- filtering by time period;
+- limiting returned records;
+- aggregated latency statistics;
+- aggregated packet loss statistics;
+- status distribution.
+
+Alerts are generated automatically during measurement persistence.
+
+`OK` measurements do not generate alerts.
+
+`RISK` measurements generate warning alerts.
+
+`FAILURE` measurements generate critical alerts.
+
+Alerts maintain a reference to the measurement that caused them, providing traceability between network events and notifications.
