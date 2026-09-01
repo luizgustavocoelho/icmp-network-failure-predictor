@@ -596,3 +596,112 @@ FR07 validates:
 - nonexistent host handling.
 
 Stored predictions can therefore be consumed independently from the prediction generation process.
+
+## Prediction Time Selection Tests
+
+FR08 validates the ability to generate and retrieve predictions based on a user-selected date, time or period.
+
+The automated test suite covers the following scenarios:
+
+- prediction generation for a selected future timestamp;
+- rejection of forecast timestamps in the past;
+- rejection of forecast timestamps without timezone information;
+- normalization and persistence of timezone-aware timestamps;
+- prediction filtering by forecast period;
+- validation of start and end timestamps;
+- rejection of invalid periods where start_at is later than end_at.
+
+### Selected Future Time
+
+The test suite verifies that a valid timezone-aware future timestamp can be submitted to:
+
+POST /hosts/{host_id}/predictions/forecast
+
+The generated prediction must preserve the requested instant and store the forecast timestamp correctly.
+
+### Past Time Validation
+
+A forecast timestamp in the past must be rejected with:
+
+422 Unprocessable Entity
+
+Expected error:
+
+{
+  "detail": "forecast_for must be in the future."
+}
+
+### Timezone Validation
+
+A forecast timestamp without timezone information must be rejected.
+
+Expected response:
+
+422 Unprocessable Entity
+
+Expected error:
+
+{
+  "detail": "forecast_for must include timezone information."
+}
+
+### Prediction Period Filtering
+
+The test suite creates predictions for different future timestamps and queries them through:
+
+GET /hosts/{host_id}/predictions
+
+Using start_at and end_at verifies that only predictions inside the requested forecast period are returned.
+
+### Invalid Period Validation
+
+If start_at occurs after end_at, the request must be rejected with:
+
+422 Unprocessable Entity
+
+Expected error:
+
+{
+  "detail": "start_at cannot be later than end_at."
+}
+
+### Test Isolation
+
+Prediction time-selection tests use controlled historical measurements instead of depending on live external network conditions.
+
+This keeps the test results deterministic and separates prediction behavior from ICMP network availability.
+
+FR08 therefore validates both:
+
+- generation of predictions for a specific user-selected future time;
+- consultation of predictions within a user-selected forecast period.
+
+## Activity Recommendation Tests
+
+FR09 validates the recommendation engine and its REST API integration.
+
+Automated tests cover:
+
+- OK network recommendations;
+- RISK network recommendations;
+- FAILURE network recommendations;
+- all supported activity types;
+- recommendation messages;
+- recommendation retrieval from an existing prediction;
+- host and prediction relationships;
+- nonexistent hosts;
+- nonexistent predictions.
+
+The recommendation service is tested independently from live network connectivity.
+
+Controlled prediction states ensure deterministic validation of recommendation behavior.
+
+The recommendation API does not rely exclusively on color to communicate suitability.
+
+Each recommendation includes:
+
+- activity type;
+- explicit suitability state;
+- understandable textual message.
+
+This design prepares the recommendation data for accessible presentation in the mobile application.

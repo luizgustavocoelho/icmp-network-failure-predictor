@@ -722,3 +722,189 @@ The latest available prediction can be retrieved through:
 If the host has no generated predictions, the latest prediction endpoint returns:
 
 `404 Not Found`
+
+## Prediction Time Selection
+
+A connectivity prediction can be generated for a user-selected future date and time through:
+
+POST /hosts/{host_id}/predictions/forecast
+
+### Request Example
+
+{
+  "forecast_for": "2026-09-01T20:00:00-03:00"
+}
+
+### Forecast Time Rules
+
+The selected forecast time:
+
+- must be in the future;
+- must include timezone information;
+- is normalized to UTC before persistence.
+
+If the selected forecast time is in the past or represents the current time, the API returns:
+
+422 Unprocessable Entity
+
+Example response:
+
+{
+  "detail": "forecast_for must be in the future."
+}
+
+If timezone information is missing, the API returns:
+
+422 Unprocessable Entity
+
+Example response:
+
+{
+  "detail": "forecast_for must include timezone information."
+}
+
+### Successful Response
+
+A successful request returns a persisted prediction containing:
+
+- prediction ID;
+- monitored host ID;
+- prediction generation timestamp;
+- selected forecast timestamp;
+- predicted latency;
+- predicted packet loss;
+- predicted network status;
+- confidence value, when available.
+
+Example:
+
+{
+  "id": 10,
+  "host_id": 1,
+  "generated_at": "2026-09-01T22:00:00Z",
+  "forecast_for": "2026-09-01T23:00:00Z",
+  "predicted_latency_ms": 32.5,
+  "predicted_packet_loss_pct": 0.0,
+  "predicted_status": "OK",
+  "confidence": null
+}
+
+### Prediction Period Query
+
+Stored predictions can also be filtered by forecast period through:
+
+GET /hosts/{host_id}/predictions
+
+Supported optional query parameters:
+
+- start_at
+- end_at
+- limit
+
+Example:
+
+GET /hosts/1/predictions?start_at=2026-09-01T18:00:00-03:00&end_at=2026-09-01T22:00:00-03:00
+
+The endpoint returns only predictions whose forecast_for timestamp falls inside the selected interval.
+
+Predictions are ordered by forecast time.
+
+### Invalid Period
+
+If start_at is later than end_at, the API returns:
+
+422 Unprocessable Entity
+
+Example response:
+
+{
+  "detail": "start_at cannot be later than end_at."
+}
+
+### Timezone Handling
+
+Client applications may send timezone-aware timestamps using offsets such as:
+
+2026-09-01T20:00:00-03:00
+
+The backend converts forecast timestamps to UTC before persistence.
+
+For example:
+
+2026-09-01T20:00:00-03:00
+
+represents the same instant as:
+
+2026-09-01T23:00:00Z
+
+This provides consistent timestamp storage while allowing clients to work with their local timezone.
+
+## Activity Recommendations
+
+Activity recommendations are generated from an existing connectivity prediction.
+
+The endpoint is:
+
+GET /hosts/{host_id}/predictions/{prediction_id}/recommendations
+
+The endpoint uses the predicted network condition to provide understandable guidance for common online activities.
+
+Supported activities:
+
+- videoconference;
+- streaming;
+- online gaming;
+- web browsing;
+- file upload.
+
+### Recommendation Levels
+
+The API uses three suitability levels:
+
+- recommended;
+- caution;
+- not_recommended.
+
+### OK Predictions
+
+When the predicted network status is OK, all supported activities are considered recommended.
+
+### RISK Predictions
+
+When the predicted status is RISK:
+
+- videoconference requires caution;
+- streaming requires caution;
+- online gaming requires caution;
+- web browsing remains recommended;
+- file uploads require caution.
+
+The response includes simple explanatory messages describing possible degradation.
+
+### FAILURE Predictions
+
+When the predicted status is FAILURE, supported online activities are marked as not recommended because connectivity is expected to be unavailable.
+
+### Response Example
+
+{
+  "host_id": 1,
+  "prediction_id": 10,
+  "predicted_status": "OK",
+  "recommendations": [
+    {
+      "activity": "videoconference",
+      "suitability": "recommended",
+      "message": "The connection is suitable for video conferences."
+    },
+    {
+      "activity": "streaming",
+      "suitability": "recommended",
+      "message": "The connection is suitable for streaming."
+    }
+  ]
+}
+
+Recommendations are derived dynamically and are not stored as separate database records.
+
+This prevents unnecessary duplication because recommendations can always be recreated from the associated prediction.
