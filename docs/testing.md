@@ -1,707 +1,1247 @@
 # Testing Strategy
 
-This document defines the initial testing strategy for the ICMP Network Failure Predictor.
+## ICMP Network Failure Predictor
 
-Testing will be performed throughout development to verify network monitoring, data storage, classification, predictions, API behavior, mobile functionality and accessibility requirements.
-
----
-
-## 1. Testing Objectives
-
-The testing process aims to verify that:
-
-- monitored hosts can be reached and measured correctly
-- ICMP measurements are recorded correctly
-- unavailable hosts are handled safely
-- historical measurements are stored consistently
-- network status classification behaves as expected
-- prediction results can be compared with real network behavior
-- REST API endpoints return valid responses
-- the mobile application correctly consumes API data
-- accessibility requirements are respected
-- simulated and real network scenarios can be compared
+This document describes the automated tests, integration tests, manual validation scenarios, network simulation tests, mobile validation, and prediction validation performed for the ICMP Network Failure Predictor.
 
 ---
 
-## 2. Main Validation Scenarios
+## 1. Objective
 
-The project must be tested under at least three main connectivity scenarios.
+The purpose of the testing process is to validate that the system can:
 
-### Scenario A — Normal Network
+- register and manage monitored hosts;
+- execute real ICMP measurements;
+- persist network measurements;
+- classify network conditions;
+- generate alerts;
+- calculate connectivity predictions;
+- generate activity recommendations;
+- retrieve historical information;
+- accept custom future prediction times;
+- expose functionality through the REST API;
+- provide real information to the mobile application;
+- distinguish normal, degraded, and unavailable network conditions.
 
-The monitored host responds normally to ICMP requests.
-
-Expected behavior:
-
-- host responds successfully
-- latency measurement is recorded
-- packet-loss information is recorded
-- measurement timestamp is stored
-- host availability is recorded
-- network status is classified as a healthy condition when the configured rules are satisfied
-
-Expected user-facing behavior:
-
-- the application indicates that the connection is operating normally
-- information is displayed using text and accessible visual indicators
-
----
-
-### Scenario B — Unstable Network
-
-The network presents signs of degradation.
-
-Possible indicators may include:
-
-- increased latency
-- increased packet loss
-- irregular response times
-- intermittent failures
-- increased jitter
-
-Expected behavior:
-
-- measurements continue to be recorded
-- degraded network behavior is identified
-- historical information remains available
-- the classification engine indicates a risk condition when the configured rules are satisfied
-
-Expected user-facing behavior:
-
-- the application warns the user about possible instability
-- the warning must not rely only on color
-- the user receives understandable information about the network condition
-
----
-
-### Scenario C — Unavailable Host
-
-The monitored host does not respond to ICMP requests.
-
-Expected behavior:
-
-- the failed monitoring attempt is recorded
-- the application does not crash
-- the host is marked as unavailable for that measurement
-- the monitoring timestamp is preserved
-- the classification engine can identify a failure condition according to the configured rules
-
-Expected user-facing behavior:
-
-- the application clearly informs the user that the host or connection is unavailable
-- the information is communicated through text and accessible indicators
-
----
-
-## 3. ICMP Monitoring Tests
-
-The monitoring service should be tested for the following situations:
-
-- successful ICMP response
-- no ICMP response
-- multiple consecutive measurements
-- latency measurement
-- packet-loss calculation
-- unreachable host
-- invalid host address
-- intermittent connectivity
-
-For every monitoring attempt, verify that the expected measurement information is produced.
-
----
-
-## 4. Data Persistence Tests
-
-Database tests should verify that:
-
-- hosts can be stored
-- measurements can be stored
-- each measurement is associated with the correct host
-- timestamps are preserved
-- latency values are stored correctly
-- packet-loss values are stored correctly
-- availability information is stored correctly
-- historical measurements can be retrieved
-- prediction records can be persisted when prediction functionality is implemented
-- alert records can be persisted when alert functionality is implemented
-
----
-
-## 5. Classification Tests
-
-The classification engine will be tested after the classification thresholds are formally defined.
-
-Planned technical states:
+The system uses three network classifications:
 
 - `OK`
 - `RISK`
 - `FAILURE`
 
-Tests must verify that measurements are classified according to the documented rules.
+---
 
-Important:
+## 2. Automated Test Suite
 
-Exact latency, packet-loss, jitter and availability thresholds have not yet been defined.
+The backend uses `pytest` as the automated testing framework.
 
-They must be documented before classification tests are considered complete.
+The final regression test was executed from:
+
+```text
+services/api
+```
+
+using:
+
+```bash
+pytest -v
+```
+
+Final result:
+
+```text
+82 tests collected
+82 passed
+6 warnings
+Execution time: 1.28s
+```
+
+Therefore:
+
+```text
+Automated tests passed: 82/82
+Success rate: 100%
+Failed tests: 0
+```
+
+The warnings reported during execution are dependency deprecation warnings and do not represent functional failures in the application.
+
+The warnings are mainly related to:
+
+- Starlette `TestClient`;
+- deprecated HTTP 422 constants.
+
+These warnings are considered technical debt for future dependency upgrades and do not affect the current functionality of the prototype.
 
 ---
 
-## 6. Prediction Validation
+## 3. Host Management Tests
 
-Prediction results should be compared with actual observed network conditions.
+The host-management tests validate:
 
-Basic validation flow:
+- host creation;
+- host listing;
+- host retrieval by ID;
+- host update;
+- IPv4 validation;
+- IPv6 validation;
+- invalid address rejection;
+- duplicate IP rejection;
+- nonexistent host handling;
+- active and inactive host behavior.
 
-1. Historical measurements are collected.
-2. A prediction is generated for a future period.
-3. The predicted status is stored.
-4. Real measurements are collected during the predicted period.
-5. The prediction is compared with the observed network condition.
-6. The result is documented.
+Examples of covered operations:
 
-Example:
+```text
+POST /hosts
+GET /hosts
+GET /hosts/{id}
+PUT /hosts/{id}
+```
 
-Predicted condition:
-
-`RISK`
-
-Observed condition:
-
-`RISK`
-
-Result:
-
-Prediction matched the observed network condition.
-
-Another possible result:
-
-Predicted condition:
-
-`OK`
-
-Observed condition:
-
-`RISK`
-
-Result:
-
-Prediction did not match the observed network condition.
-
-Prediction accuracy metrics may be introduced later if required by the final implementation.
+The automated suite also verifies that invalid IP addresses and duplicated addresses are rejected correctly.
 
 ---
 
-## 7. REST API Tests
+## 4. ICMP Monitoring Tests
 
-The REST API should be tested for:
+The ICMP monitoring module validates the execution and interpretation of system ping commands.
 
-- successful responses
-- invalid requests
-- missing resources
-- invalid host identifiers
-- malformed input
-- database failures
-- expected response structure
-- expected HTTP status codes
+The automated tests cover:
 
-Planned resource areas include:
-
-- hosts
-- measurements
-- historical data
-- network status
-- predictions
-- alerts
-- activity recommendations
-
-Automated API tests may be implemented using `pytest`.
-
----
-
-## 8. Mobile Application Tests
-
-The mobile application should be tested for:
-
-- application startup
-- navigation between screens
-- API connection
-- loading states
-- successful data display
-- empty-data scenarios
-- API failure scenarios
-- current network-status visualization
-- historical-data visualization
-- future prediction visualization
-- activity recommendation flow
-- date and time selection
-
----
-
-## 9. Accessibility Tests
-
-Accessibility must be tested as part of the normal development process.
-
-The application should be checked for:
-
-- TalkBack compatibility
-- VoiceOver compatibility when available
-- accessible labels
-- logical focus order
-- text scaling
-- adequate contrast
-- adequate touch-target size
-- information not communicated only through color
-- understandable language
-- accessible explanations for technical terms
-
-Main application flows should remain usable with assistive technologies.
-
----
-
-## 10. Activity Recommendation Tests
-
-The system should be tested with different activity types.
-
-Examples:
-
-- video calls
-- audio calls
-- streaming
-- online gaming
-- web browsing
-- file transfers
-- messaging
-
-For each activity, the system should evaluate the predicted network condition and return an understandable recommendation.
-
-Example test:
-
-Activity:
-
-`Video Call`
-
-Predicted condition:
-
-`OK`
-
-Expected result:
-
-The application indicates that the connection is expected to be suitable for the activity.
-
-Another example:
-
-Activity:
-
-`Online Gaming`
-
-Predicted condition:
-
-`RISK`
-
-Expected result:
-
-The application warns that the connection may present instability during the selected period.
-
----
-
-## 11. Packet Tracer Validation
-
-Cisco Packet Tracer will be used to create simulated network scenarios.
-
-Tests should compare simulated and real environments when applicable.
-
-The comparison should document:
-
-- network topology
-- devices used
-- protocols involved
-- ICMP behavior
-- simulated connectivity condition
-- real monitoring condition
-- similarities
-- differences
-- conclusions
-
-Detailed simulation documentation will be maintained in:
-
-`docs/network-simulation.md`
-
----
-
-## 12. Manual Test Case Template
-
-Manual test cases should follow a consistent format.
-
-### Test Case ID
-
-Example:
-
-`TC-001`
-
-### Requirement
-
-Example:
-
-`FR02`
-
-### Title
-
-Example:
-
-Successful ICMP measurement
-
-### Preconditions
-
-- monitored host is registered
-- monitored host is online
-- network connection is available
-
-### Steps
-
-1. Start the monitoring service.
-2. Execute an ICMP measurement.
-3. Wait for the response.
-4. Inspect the generated measurement.
-
-### Expected Result
-
-- host responds successfully
-- latency is measured
-- timestamp is recorded
-- measurement is stored correctly
-
-### Actual Result
-
-To be completed during testing.
-
-### Status
-
-Possible values:
-
-- `PASS`
-- `FAIL`
-- `BLOCKED`
-
----
-
-## 13. Initial Test Cases
-
-### TC-001 — Normal Host Response
-
-Requirement:
-
-`FR02 / FR03`
-
-Expected result:
-
-The host responds and a valid network measurement is created.
-
----
-
-### TC-002 — Unreachable Host
-
-Requirement:
-
-`FR02 / FR03 / FR04`
-
-Expected result:
-
-The failed response is recorded without crashing the monitoring service.
-
----
-
-### TC-003 — Network Degradation
-
-Requirement:
-
-`FR03 / FR04`
-
-Expected result:
-
-Degraded measurements are recorded and classified according to the configured rules.
-
----
-
-### TC-004 — Historical Data Retrieval
-
-Requirement:
-
-`FR05`
-
-Expected result:
-
-Stored measurements can be retrieved in chronological order.
-
----
-
-### TC-005 — Future Prediction Consultation
-
-Requirement:
-
-`FR07`
-
-Expected result:
-
-The user can retrieve a prediction for a future period when prediction data is available.
-
----
-
-### TC-006 — Activity Recommendation
-
-Requirement:
-
-`FR09`
-
-Expected result:
-
-The system provides an understandable recommendation based on the expected network condition.
-
----
-
-### TC-007 — Accessible Network Status
-
-Expected result:
-
-Network status is communicated using text and accessible elements rather than color alone.
-
----
-
-### TC-008 — Text Scaling
-
-Expected result:
-
-Increasing the operating-system font size does not hide or prevent access to essential functionality.
-
----
-
-## 14. Test Evidence
-
-Testing evidence may include:
-
-- terminal output
-- API responses
-- database queries
-- application screenshots
-- screen recordings
-- Packet Tracer screenshots
-- automated test results
-- comparison tables
-
-Evidence should be stored or referenced in the repository when appropriate.
-
-Screenshots may be stored in:
-
-`assets/screenshots/`
-
----
-
-## 15. Test Status
-
-Current phase:
-
-**Testing strategy defined**
-
-Most test cases are currently planned and will be executed as the corresponding features are implemented.
-
-Test results must not be marked as completed before the related functionality exists.
-
-## Network Classification Tests
-
-The network classification service is validated through automated unit and integration tests.
-
-The current classification policy is:
-
-| Condition | Result |
-| --- | --- |
-| Host responds, RTT < 300 ms and packet loss < 1% | `OK` |
-| Host responds, but RTT >= 300 ms or packet loss >= 1% | `RISK` |
-| Host does not respond or packet loss reaches 100% | `FAILURE` |
-
-Boundary testing is included to verify the exact transition points between states.
-
-Examples:
-
-- 299.9 ms latency → `OK`
-- 300.0 ms latency → `RISK`
-- 0.99% packet loss → `OK`
-- 1.00% packet loss → `RISK`
-- 100% packet loss → `FAILURE`
-
-Additional validation covers:
-
-- negative latency rejection;
-- packet loss below 0% rejection;
-- packet loss above 100% rejection;
-- missing latency with successful response;
+- extraction of latency from English ping output;
+- extraction of latency from Portuguese ping output;
+- missing latency handling;
+- successful ICMP measurement;
 - partial packet loss;
 - total packet loss;
-- simultaneous high latency and packet loss.
+- invalid packet count rejection;
+- invalid timeout rejection;
+- periodic monitoring;
+- invalid periodic interval rejection.
 
-The measurement persistence tests also verify that classifications are stored in PostgreSQL and returned through the REST API.
+The monitoring service transforms the result of the operating-system ping command into structured data containing information such as:
 
-Current automated test suite status:
+```text
+host
+measured_at
+latency
+packet loss
+success
+packets sent
+packets received
+```
 
-`40 passed`
+---
 
-## Historical Analysis and Alert Tests
+## 5. Measurement Persistence
 
-FR05 includes automated tests for:
+The measurement tests validate:
 
-- history retrieval by host;
-- status filtering;
-- date and time filtering;
-- result limits;
-- invalid period validation;
-- historical summary statistics;
-- empty history summaries;
-- healthy measurements without alerts;
-- warning alerts for `RISK`;
-- critical alerts for `FAILURE`;
-- alert-to-measurement relationships;
+- ICMP measurement execution;
+- persistence of measurements;
+- retrieval of measurement history;
+- newest measurement ordering;
+- active host validation;
+- inactive host rejection;
 - nonexistent host handling.
 
-Historical and alert behavior is tested using controlled ICMP measurements rather than external network dependencies.
+Each persisted measurement can contain:
 
-## Prediction Engine Tests
+```text
+host_id
+measured_at
+latency_ms
+packet_loss_pct
+success
+status
+created_at
+```
 
-The prediction engine is validated through unit and integration tests.
+The measurements stored by the system are later used by:
 
-Current coverage includes:
+- the History screen;
+- the prediction engine;
+- the alert system;
+- summary calculations.
+
+---
+
+## 6. Measurement History
+
+Historical measurements can be retrieved and filtered by:
+
+- status;
+- start date;
+- end date;
+- maximum result limit.
+
+The automated tests validate:
+
+- valid historical filters;
+- status filtering;
+- date filtering;
+- result limits;
+- invalid history periods;
+- summary statistics;
+- empty historical summaries.
+
+The History screen in the mobile application consumes these measurements to display:
+
+- average latency;
+- minimum latency;
+- maximum latency;
+- average packet loss;
+- latency evolution;
+- packet-loss evolution;
+- recent measurements.
+
+---
+
+## 7. Network Classification
+
+The network classifier supports three states:
+
+```text
+OK
+RISK
+FAILURE
+```
+
+The thresholds are project-defined rules used by the prototype.
+
+### 7.1 OK
+
+A measurement is classified as `OK` when the host responds and:
+
+```text
+latency < 300 ms
+packet loss < 1%
+```
+
+The automated suite validates:
+
+- healthy network classification;
+- latency immediately below the threshold;
+- packet loss immediately below the threshold.
+
+---
+
+### 7.2 RISK
+
+A measurement is classified as `RISK` when the host still responds but degradation indicators are detected.
+
+Examples:
+
+```text
+latency >= 300 ms
+```
+
+or:
+
+```text
+packet loss >= 1%
+and
+packet loss < 100%
+```
+
+The automated suite contains tests including:
+
+```text
+test_latency_at_threshold_is_risk
+test_latency_above_threshold_is_risk
+test_packet_loss_at_threshold_is_risk
+test_partial_packet_loss_is_risk
+test_missing_latency_with_success_is_risk
+test_high_latency_and_packet_loss_is_risk
+```
+
+---
+
+### 7.3 FAILURE
+
+A measurement is classified as `FAILURE` when:
+
+```text
+the host does not respond
+```
+
+or:
+
+```text
+packet loss = 100%
+```
+
+The automated suite validates:
+
+```text
+total packet loss
+unsuccessful measurement
+```
+
+It also validates invalid values such as:
+
+```text
+negative latency
+negative packet loss
+packet loss above 100%
+```
+
+---
+
+## 8. Alert Validation
+
+Alerts are generated according to the network condition.
+
+### OK
+
+```text
+Status: OK
+Alert: none
+```
+
+### RISK
+
+```text
+Status: RISK
+Alert severity: warning
+```
+
+Automated validation includes:
+
+```text
+test_risk_measurement_generates_warning_alert
+```
+
+### FAILURE
+
+```text
+Status: FAILURE
+Alert severity: critical
+```
+
+Automated validation includes:
+
+```text
+test_failure_measurement_generates_critical_alert
+```
+
+The suite also validates:
+
+- alert references to generated measurements;
+- alert retrieval;
+- behavior for nonexistent hosts.
+
+---
+
+## 9. Prediction Engine Testing
+
+The prediction engine uses recent historical measurements to estimate future connectivity conditions.
+
+The current implementation is a statistical baseline based on recent measurements and linear trend estimation.
+
+It is not presented as a machine-learning model.
+
+The prediction process may generate:
+
+```text
+predicted_latency_ms
+predicted_packet_loss_pct
+predicted_status
+forecast_for
+confidence
+```
+
+At the current project stage:
+
+```text
+confidence = null
+```
+
+No statistically defensible confidence metric has been implemented yet.
+
+The automated tests validate:
 
 - increasing latency trends;
-- healthy network prediction;
-- degraded network prediction;
-- failure prediction;
-- packet loss lower-bound protection;
-- packet loss upper-bound protection;
-- insufficient historical data;
-- prediction API response;
-- future forecast timestamps;
-- prediction persistence;
-- nonexistent host handling.
+- predicted `OK`;
+- predicted `RISK`;
+- predicted `FAILURE`;
+- packet-loss prediction;
+- packet-loss clamping to 0%;
+- packet-loss clamping to 100%;
+- minimum historical measurement requirements;
+- future prediction timestamps.
 
-External network connectivity is not required for prediction tests because controlled historical measurements are used.
+The prediction engine requires at least three historical measurements.
 
-The prediction tests validate the statistical baseline independently from the ICMP collection layer.
+---
 
-## Prediction Query Tests
+## 10. Future-Time Prediction
 
-FR07 validates:
+The API allows the client to select a custom future timestamp.
+
+Endpoint:
+
+```text
+POST /hosts/{host_id}/predictions/forecast
+```
+
+Example:
+
+```json
+{
+  "forecast_for": "2026-09-04T03:16:00-03:00"
+}
+```
+
+The automated tests validate:
+
+- valid future timestamps;
+- rejection of timestamps in the past;
+- mandatory timezone information;
+- invalid prediction periods.
+
+The mobile Forecast screen uses this functionality to allow the user to select a future date and time.
+
+---
+
+## 11. Prediction History
+
+Generated predictions are persisted and can be retrieved later.
+
+The automated tests validate:
 
 - prediction history retrieval;
 - latest prediction retrieval;
-- prediction result limiting;
-- hosts without predictions;
-- nonexistent host handling.
+- optional historical filters;
+- nonexistent host behavior;
+- empty latest-prediction behavior.
 
-Stored predictions can therefore be consumed independently from the prediction generation process.
+Main endpoints include:
 
-## Prediction Time Selection Tests
-
-FR08 validates the ability to generate and retrieve predictions based on a user-selected date, time or period.
-
-The automated test suite covers the following scenarios:
-
-- prediction generation for a selected future timestamp;
-- rejection of forecast timestamps in the past;
-- rejection of forecast timestamps without timezone information;
-- normalization and persistence of timezone-aware timestamps;
-- prediction filtering by forecast period;
-- validation of start and end timestamps;
-- rejection of invalid periods where start_at is later than end_at.
-
-### Selected Future Time
-
-The test suite verifies that a valid timezone-aware future timestamp can be submitted to:
-
-POST /hosts/{host_id}/predictions/forecast
-
-The generated prediction must preserve the requested instant and store the forecast timestamp correctly.
-
-### Past Time Validation
-
-A forecast timestamp in the past must be rejected with:
-
-422 Unprocessable Entity
-
-Expected error:
-
-{
-  "detail": "forecast_for must be in the future."
-}
-
-### Timezone Validation
-
-A forecast timestamp without timezone information must be rejected.
-
-Expected response:
-
-422 Unprocessable Entity
-
-Expected error:
-
-{
-  "detail": "forecast_for must include timezone information."
-}
-
-### Prediction Period Filtering
-
-The test suite creates predictions for different future timestamps and queries them through:
-
+```text
 GET /hosts/{host_id}/predictions
+GET /hosts/{host_id}/predictions/latest
+```
 
-Using start_at and end_at verifies that only predictions inside the requested forecast period are returned.
+---
 
-### Invalid Period Validation
+## 12. Activity Recommendation Testing
 
-If start_at occurs after end_at, the request must be rejected with:
+Predictions are converted into recommendations for common network activities.
 
-422 Unprocessable Entity
+Supported activities:
 
-Expected error:
+```text
+Videoconference
+Streaming
+Online gaming
+Web browsing
+File upload
+```
 
-{
-  "detail": "start_at cannot be later than end_at."
-}
+Recommendation states:
 
-### Test Isolation
+```text
+RECOMMENDED
+CAUTION
+NOT_RECOMMENDED
+```
 
-Prediction time-selection tests use controlled historical measurements instead of depending on live external network conditions.
+### OK Prediction
 
-This keeps the test results deterministic and separates prediction behavior from ICMP network availability.
+All supported activities are classified as:
 
-FR08 therefore validates both:
+```text
+RECOMMENDED
+```
 
-- generation of predictions for a specific user-selected future time;
-- consultation of predictions within a user-selected forecast period.
+### RISK Prediction
 
-## Activity Recommendation Tests
+Web browsing remains:
 
-FR09 validates the recommendation engine and its REST API integration.
+```text
+RECOMMENDED
+```
 
-Automated tests cover:
+while more connectivity-sensitive activities are classified as:
 
-- OK network recommendations;
-- RISK network recommendations;
-- FAILURE network recommendations;
-- all supported activity types;
+```text
+CAUTION
+```
+
+Automated validation includes:
+
+```text
+test_risk_network_generates_caution
+```
+
+### FAILURE Prediction
+
+All supported activities are classified as:
+
+```text
+NOT_RECOMMENDED
+```
+
+The tests also validate:
+
+- supported activity list;
 - recommendation messages;
-- recommendation retrieval from an existing prediction;
-- host and prediction relationships;
-- nonexistent hosts;
-- nonexistent predictions.
+- prediction ownership;
+- nonexistent predictions;
+- nonexistent hosts.
 
-The recommendation service is tested independently from live network connectivity.
+---
 
-Controlled prediction states ensure deterministic validation of recommendation behavior.
+## 13. Controlled RISK Validation
 
-The recommendation API does not rely exclusively on color to communicate suitability.
+The `RISK` state was validated using controlled and reproducible automated tests rather than depending on unpredictable real-world network degradation.
 
-Each recommendation includes:
+The focused validation executed the following scenarios:
 
-- activity type;
-- explicit suitability state;
-- understandable textual message.
+```text
+Latency at the configured threshold
+Partial packet loss
+Warning alert generation
+RISK prediction generation
+CAUTION recommendation generation
+```
 
-This design prepares the recommendation data for accessible presentation in the mobile application.
+The focused command executed was:
+
+```bash
+pytest -v tests/test_network_classifier.py::test_latency_at_threshold_is_risk tests/test_network_classifier.py::test_partial_packet_loss_is_risk tests/test_alerts.py::test_risk_measurement_generates_warning_alert tests/test_prediction_service.py::test_calculate_prediction_detects_risk tests/test_recommendation_service.py::test_risk_network_generates_caution
+```
+
+Result:
+
+```text
+5 tests collected
+5 passed
+```
+
+This validates the logical chain:
+
+```text
+High latency or partial packet loss
+        ↓
+RISK
+        ↓
+WARNING alert
+        ↓
+RISK prediction
+        ↓
+CAUTION recommendation
+```
+
+This scenario is explicitly considered a controlled validation scenario and not a claim of naturally occurring network degradation.
+
+---
+
+## 14. Real OK Scenario
+
+A real ICMP test was performed using the monitored host:
+
+```text
+Name: Google DNS
+IP: 8.8.8.8
+```
+
+The host successfully responded to real ICMP requests.
+
+Observed behavior:
+
+```text
+success = true
+packet loss = 0%
+latency below 300 ms
+status = OK
+```
+
+This validated the real execution chain:
+
+```text
+ICMP Echo
+    ↓
+Measurement
+    ↓
+Persistence
+    ↓
+Classifier
+    ↓
+OK
+```
+
+Multiple measurements were generated and stored successfully.
+
+---
+
+## 15. Real FAILURE Scenario
+
+A controlled unreachable host was registered using:
+
+```text
+192.0.2.1
+```
+
+The host was used to validate failure detection.
+
+The host did not successfully respond to the ICMP measurement.
+
+Observed behavior:
+
+```text
+success = false
+packet loss = 100%
+status = FAILURE
+```
+
+The system also generated a:
+
+```text
+CRITICAL alert
+```
+
+This validates the complete chain:
+
+```text
+Unreachable host
+        ↓
+ICMP failure
+        ↓
+100% packet loss
+        ↓
+FAILURE
+        ↓
+CRITICAL alert
+```
+
+---
+
+## 16. Prediction Versus Real Measurement
+
+A prediction-versus-observed-result validation was performed using:
+
+```text
+Host: Google DNS
+IP: 8.8.8.8
+```
+
+A prediction was generated at approximately:
+
+```text
+03:12
+```
+
+for the future timestamp:
+
+```text
+03:16
+```
+
+### Predicted Result
+
+```text
+Predicted latency: 8.13 ms
+Predicted packet loss: 0%
+Predicted status: OK
+```
+
+### Real Measurement
+
+A new real ICMP measurement was performed at approximately:
+
+```text
+03:16:16
+```
+
+Observed result:
+
+```text
+Measured latency: 5.00 ms
+Measured packet loss: 0%
+Measured status: OK
+```
+
+### Comparison
+
+| Metric | Predicted | Observed |
+| --- | ---: | ---: |
+| Latency | 8.13 ms | 5.00 ms |
+| Packet loss | 0% | 0% |
+| Network status | OK | OK |
+
+Absolute latency difference:
+
+```text
+3.13 ms
+```
+
+Packet-loss prediction:
+
+```text
+Correct
+```
+
+Network-condition prediction:
+
+```text
+Correct
+```
+
+The experiment demonstrates that the prediction pipeline is operational from historical measurements through future estimation and subsequent comparison with a later real measurement.
+
+A single observation is not sufficient to establish global statistical accuracy.
+
+Additional measurements across longer periods and different network conditions would be required to estimate prediction accuracy reliably.
+
+---
+
+## 17. Cisco Packet Tracer Validation
+
+Cisco Packet Tracer was used to demonstrate the network behavior underlying ICMP monitoring.
+
+The final topology contains:
+
+```text
+PC-Monitor
+        ↓
+SW-Monitor
+        ↓
+R1
+        ↓
+SW-Target
+        ↓
+Server-Target
+```
+
+### Monitoring Network
+
+```text
+Network: 192.168.10.0/24
+
+PC-Monitor:
+IP: 192.168.10.10
+Gateway: 192.168.10.1
+```
+
+### Router
+
+```text
+R1
+
+GigabitEthernet0/0:
+192.168.10.1/24
+
+GigabitEthernet0/1:
+192.168.20.1/24
+```
+
+### Monitored Network
+
+```text
+Network: 192.168.20.0/24
+
+Server-Target:
+IP: 192.168.20.10
+Gateway: 192.168.20.1
+```
+
+---
+
+## 18. Packet Tracer — Normal Operation
+
+Connectivity was tested between:
+
+```text
+PC-Monitor
+192.168.10.10
+```
+
+and:
+
+```text
+Server-Target
+192.168.20.10
+```
+
+After address-resolution convergence, the normal scenario produced:
+
+```text
+Packets sent: 4
+Packets received: 4
+Packets lost: 0
+Packet loss: 0%
+```
+
+ICMP Echo Request and Echo Reply were also observed through Packet Tracer Simulation Mode.
+
+The packet path was:
+
+```text
+PC-Monitor
+    ↓
+SW-Monitor
+    ↓
+R1
+    ↓
+SW-Target
+    ↓
+Server-Target
+```
+
+The Echo Reply returned through the reverse path.
+
+---
+
+## 19. Packet Tracer — Failure Scenario
+
+A connectivity failure was intentionally created by administratively disabling:
+
+```text
+R1 GigabitEthernet0/1
+```
+
+Command:
+
+```text
+shutdown
+```
+
+The interface state was confirmed as:
+
+```text
+administratively down
+down
+```
+
+The monitored network became unreachable.
+
+The resulting ICMP test produced:
+
+```text
+Packets sent: 4
+Packets received: 0
+Packets lost: 4
+Packet loss: 100%
+```
+
+The output also included:
+
+```text
+Destination host unreachable
+```
+
+Simulation Mode demonstrated the packet reaching the router but failing to continue toward the monitored network.
+
+This scenario represents the network-level behavior associated with the application's `FAILURE` condition.
+
+---
+
+## 20. Packet Tracer — Recovery Scenario
+
+The router interface was restored using:
+
+```text
+no shutdown
+```
+
+The link returned to its operational state.
+
+During recovery, the observed packet-loss sequence included:
+
+```text
+100% loss
+25% loss
+0% loss
+```
+
+The final test produced:
+
+```text
+Packets sent: 4
+Packets received: 4
+Packets lost: 0
+Packet loss: 0%
+```
+
+The Packet Tracer project was saved in its final functional state with the network operational.
+
+---
+
+## 21. Real Environment Versus Simulated Environment
+
+The project intentionally separates the real monitoring environment from Cisco Packet Tracer simulation.
+
+### Real Environment
+
+The functional prototype uses:
+
+```text
+Operating-system ICMP ping
+        ↓
+Python
+        ↓
+FastAPI
+        ↓
+PostgreSQL
+        ↓
+Prediction engine
+        ↓
+Recommendation engine
+        ↓
+React Native / Expo
+```
+
+Real hosts are monitored using ICMP requests executed by the backend.
+
+---
+
+### Simulated Environment
+
+Cisco Packet Tracer demonstrates:
+
+```text
+network topology
+IPv4 addressing
+subnets
+default gateways
+Layer 2 switching
+Layer 3 routing
+ICMP Echo Request
+ICMP Echo Reply
+interface failure
+connectivity failure
+network recovery
+```
+
+Packet Tracer does not directly feed data into the FastAPI backend.
+
+It serves as an educational and technical representation of the network behavior that the real application monitors.
+
+---
+
+## 22. Mobile Application Validation
+
+The React Native / Expo application was tested using a physical Android device.
+
+The application successfully consumed the FastAPI backend over the local network.
+
+The validated screens are:
+
+```text
+Overview
+History
+Forecast
+Alerts
+```
+
+---
+
+## 23. Overview Validation
+
+The Overview screen was validated with real API data.
+
+Validated functionality:
+
+```text
+latest real measurement
+current network status
+latest prediction
+real latency
+real packet loss
+pull-to-refresh
+automatic reload when returning to the screen
+OK visual state
+RISK visual state
+FAILURE visual state
+```
+
+A manual refresh test was also performed.
+
+A new ICMP measurement was generated through Swagger, after which the Overview screen was refreshed.
+
+The newly measured latency appeared correctly in the mobile interface.
+
+This confirmed:
+
+```text
+Swagger
+    ↓
+FastAPI
+    ↓
+PostgreSQL
+    ↓
+React Native
+    ↓
+Updated mobile data
+```
+
+---
+
+## 24. History Validation
+
+The History screen was connected to real historical measurements.
+
+Validated functionality:
+
+```text
+24-hour filter
+7-day filter
+30-day filter
+average latency
+minimum latency
+maximum latency
+average packet loss
+latency chart
+packet-loss chart
+recent measurement list
+pull-to-refresh
+```
+
+All displayed values originate from real API measurements.
+
+---
+
+## 25. Forecast Validation
+
+The Forecast screen allows the user to choose:
+
+```text
+future date
+future time
+```
+
+The selected timestamp is sent to:
+
+```text
+POST /hosts/{host_id}/predictions/forecast
+```
+
+Validated output includes:
+
+```text
+predicted latency
+predicted packet loss
+predicted status
+activity recommendations
+```
+
+The interface also presents recommendations for:
+
+```text
+videoconference
+streaming
+online gaming
+web browsing
+file upload
+```
+
+---
+
+## 26. Alerts Validation
+
+The Alerts screen was connected to the real API.
+
+Validated functionality:
+
+```text
+empty alert state
+warning alert state
+critical alert state
+alert summary
+recent alerts
+pull-to-refresh
+```
+
+Temporary development alerts were created to validate the visual states and were removed after testing.
+
+This confirmed the complete flow:
+
+```text
+PostgreSQL
+    ↓
+FastAPI
+    ↓
+Alerts endpoint
+    ↓
+React Native
+    ↓
+Alert cards
+```
+
+---
+
+## 27. Internationalization Validation
+
+The mobile application supports three languages:
+
+```text
+English
+Portuguese
+Spanish
+```
+
+Language preference is persisted using local storage.
+
+The following interface elements were validated in all supported languages:
+
+```text
+navigation
+status labels
+measurements
+history
+forecast
+alerts
+activity names
+recommendation states
+recommendation descriptions
+```
+
+An explicit language-selection modal was implemented to improve usability and accessibility.
+
+---
+
+## 28. Accessibility Validation
+
+The mobile interface was designed according to the accessibility requirements established for the project.
+
+Validated characteristics include:
+
+```text
+minimum 48 dp touch targets
+screen-reader accessibility labels
+status information not represented only by color
+explicit OK / RISK / FAILURE text
+explicit recommendation suitability text
+font scaling
+scrollable content
+predictable bottom-tab navigation
+safe-area handling
+accessible language selection
+```
+
+Large system font sizes were manually tested on a physical Android device.
+
+The application remained navigable and the content remained accessible.
+
+---
+
+## 29. End-to-End Architecture Validation
+
+The project was successfully validated end-to-end.
+
+The real system flow is:
+
+```text
+Network Host
+    ↓
+ICMP Echo Request / Reply
+    ↓
+ICMP Monitor
+    ↓
+Measurement Service
+    ↓
+Network Classifier
+    ↓
+PostgreSQL
+    ↓
+Prediction Engine
+    ↓
+Recommendation Engine
+    ↓
+FastAPI
+    ↓
+React Native / Expo
+    ↓
+User
+```
+
+The mobile application displays information generated from the real monitoring pipeline rather than static mock data.
+
+---
+
+## 30. Final Test Status
+
+### Automated Backend Tests
+
+```text
+82 passed
+0 failed
+6 warnings
+```
+
+### Functional and Integration Validation
+
+```text
+Real OK scenario                         PASSED
+Controlled RISK scenario                 PASSED
+Real FAILURE scenario                    PASSED
+Warning alert                            PASSED
+Critical alert                           PASSED
+Prediction generation                    PASSED
+Prediction vs real measurement           PASSED
+Activity recommendations                 PASSED
+Mobile API integration                   PASSED
+Overview real data                       PASSED
+Overview pull-to-refresh                 PASSED
+History visualization                    PASSED
+History filters                          PASSED
+Forecast interface                       PASSED
+Future date/time selection               PASSED
+Alerts interface                         PASSED
+Internationalization                     PASSED
+Large-font accessibility                 PASSED
+Status without color dependency          PASSED
+Minimum touch-target validation          PASSED
+Packet Tracer normal operation           PASSED
+Packet Tracer failure scenario           PASSED
+Packet Tracer recovery                   PASSED
+```
+
+---
+
+## 31. Conclusion
+
+The testing strategy combines:
+
+- automated unit tests;
+- automated integration tests;
+- real ICMP measurements;
+- controlled degradation scenarios;
+- real connectivity-failure tests;
+- prediction validation;
+- activity-recommendation validation;
+- mobile integration testing;
+- internationalization testing;
+- accessibility validation;
+- Cisco Packet Tracer simulation.
+
+The final automated regression suite completed successfully with:
+
+```text
+82/82 tests passing
+```
+
+The system was also validated through real and controlled scenarios representing:
+
+```text
+normal operation
+degraded network condition
+connectivity failure
+network recovery
+future connectivity prediction
+```
+
+The results demonstrate that the current prototype satisfies the core functional objectives of the ICMP Network Failure Predictor.
+
+Future work may include:
+
+- longer prediction-validation periods;
+- additional monitored hosts;
+- more advanced statistical or machine-learning models;
+- a formal confidence metric;
+- production deployment;
+- continuous monitoring infrastructure;
+- expanded network analytics.

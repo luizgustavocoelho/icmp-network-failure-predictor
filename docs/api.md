@@ -1,910 +1,1530 @@
-# REST API Specification
+# API Documentation
 
-This document defines the initial REST API contract for the ICMP Network Failure Predictor.
+## ICMP Network Failure Predictor
 
-The API will provide communication between the backend services and the mobile application.
+This document describes the REST API exposed by the ICMP Network Failure Predictor backend.
 
-The initial backend implementation is planned using FastAPI.
+The API is implemented using:
+
+```text
+Python
+FastAPI
+Pydantic
+SQLAlchemy
+PostgreSQL
+```
+
+The API provides access to:
+
+- monitored hosts;
+- ICMP measurements;
+- measurement history;
+- measurement summaries;
+- alerts;
+- connectivity predictions;
+- custom future forecasts;
+- prediction history;
+- activity recommendations.
 
 ---
 
 ## 1. Base URL
 
-During local development, the API may use an address similar to:
+During local development, the backend runs using:
 
-`http://localhost:8000`
+```text
+http://localhost:8000
+```
 
-The final deployment address will be defined later.
-
----
-
-## 2. Data Format
-
-The API will exchange data using JSON.
+When accessed by a physical mobile device on the same local network, the computer's LAN IP is used.
 
 Example:
 
+```text
+http://192.168.x.x:8000
+```
+
+The backend can be started with:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+---
+
+## 2. Interactive API Documentation
+
+FastAPI automatically exposes Swagger/OpenAPI documentation.
+
+Swagger UI:
+
+```text
+http://localhost:8000/docs
+```
+
+The Swagger interface was used extensively during:
+
+- development;
+- endpoint validation;
+- ICMP testing;
+- prediction testing;
+- failure testing;
+- manual integration validation.
+
+---
+
+## 3. API Organization
+
+The API is organized around the following resources:
+
+```text
+Hosts
+Measurements
+Measurement Summary
+Alerts
+Predictions
+Recommendations
+```
+
+Main endpoint groups:
+
+```text
+/hosts
+/hosts/{host_id}/measurements
+/hosts/{host_id}/alerts
+/hosts/{host_id}/predictions
+```
+
+---
+
+# HOSTS
+
+## 4. Create Host
+
+### Endpoint
+
+```http
+POST /hosts
+```
+
+Creates a new monitored network host.
+
+### Example Request
+
+```json
 {
-  "status": "ok"
+  "name": "Google DNS",
+  "ip_address": "8.8.8.8",
+  "description": "Public DNS host used for network monitoring.",
+  "is_active": true
 }
+```
+
+### Main Validations
+
+The API validates:
+
+```text
+IPv4 addresses
+IPv6 addresses
+duplicate IP addresses
+required fields
+```
+
+Duplicate addresses are rejected.
+
+Invalid addresses are also rejected.
 
 ---
 
-## 3. HTTP Methods
+## 5. List Hosts
 
-The project will primarily use:
+### Endpoint
 
-- `GET` — retrieve information
-- `POST` — create information
-- `PUT` — update information
-- `DELETE` — remove information when applicable
+```http
+GET /hosts
+```
 
----
+Returns the registered hosts.
 
-## 4. HTTP Status Codes
+### Example
 
-Common status codes expected in the API include:
+```http
+GET /hosts
+```
 
-- `200 OK` — request completed successfully
-- `201 Created` — resource created successfully
-- `400 Bad Request` — invalid request
-- `404 Not Found` — requested resource does not exist
-- `422 Unprocessable Entity` — input validation error
-- `500 Internal Server Error` — unexpected backend error
+Example host concepts returned by the API include:
 
----
+```text
+id
+name
+ip_address
+description
+is_active
+created_at
+updated_at
+```
 
-# 5. Hosts
-
-Hosts represent network devices monitored by the system.
-
-Examples:
-
-- computer
-- server
-- router
+The mobile application uses this endpoint to locate an active host before retrieving measurements, predictions, history, or alerts.
 
 ---
 
-## GET /hosts
+## 6. Get Host by ID
 
-Returns all registered monitored hosts.
+### Endpoint
 
-Example response:
-
-[
-  {
-    "id": 1,
-    "name": "Main Router",
-    "ip_address": "192.168.0.1",
-    "description": "Primary local network router",
-    "is_active": true
-  }
-]
-
----
-
-## GET /hosts/{host_id}
-
-Returns information about a specific monitored host.
+```http
+GET /hosts/{host_id}
+```
 
 Example:
 
-`GET /hosts/1`
+```http
+GET /hosts/1
+```
 
-Example response:
+Returns the requested host.
 
-{
-  "id": 1,
-  "name": "Main Router",
-  "ip_address": "192.168.0.1",
-  "description": "Primary local network router",
-  "is_active": true
-}
-
-Possible response when the host does not exist:
-
-`404 Not Found`
+If the host does not exist, the API returns an appropriate error response.
 
 ---
 
-## POST /hosts
+## 7. Update Host
 
-Creates a monitored host.
+### Endpoint
 
-Example request:
+```http
+PUT /hosts/{host_id}
+```
 
-{
-  "name": "Main Router",
-  "ip_address": "192.168.0.1",
-  "description": "Primary local network router"
-}
+Updates an existing host.
 
-Example response:
+Example:
 
-{
-  "id": 1,
-  "name": "Main Router",
-  "ip_address": "192.168.0.1",
-  "description": "Primary local network router",
-  "is_active": true
-}
+```http
+PUT /hosts/1
+```
 
-Expected status:
+The endpoint supports changing host information such as:
 
-`201 Created`
+```text
+name
+IP address
+description
+active state
+```
 
----
-
-## PUT /hosts/{host_id}
-
-Updates information about an existing host.
-
-Example request:
-
-{
-  "name": "Office Router",
-  "ip_address": "192.168.0.1",
-  "description": "Router used by the office network",
-  "is_active": true
-}
+Input validation continues to apply during updates.
 
 ---
 
-# 6. Measurements
+# ICMP MEASUREMENTS
 
-Measurements represent network information collected through ICMP monitoring.
+## 8. Execute a Measurement
 
-A measurement may include:
+### Endpoint
 
-- monitored host
-- timestamp
-- latency
-- packet loss
-- response status
-- classified network state
+```http
+POST /hosts/{host_id}/measure
+```
 
----
+Executes a real ICMP measurement against the selected host.
 
-## GET /measurements
+Example:
 
-Returns network measurements.
+```http
+POST /hosts/1/measure
+```
 
-Optional filters may be introduced later, such as:
+Conceptual flow:
 
-- host
-- start date
-- end date
-- status
+```text
+API Request
+    ↓
+Host Validation
+    ↓
+ICMP Monitor
+    ↓
+Operating-System Ping
+    ↓
+Latency / Packet Loss
+    ↓
+Network Classification
+    ↓
+Database Persistence
+    ↓
+Alert Evaluation
+    ↓
+API Response
+```
 
-Example response:
+A successful measurement contains information such as:
 
-[
-  {
-    "id": 101,
-    "host_id": 1,
-    "measured_at": "2026-08-28T10:30:00",
-    "latency_ms": 24.5,
-    "packet_loss_pct": 0.0,
-    "success": true,
-    "status": "OK"
-  }
-]
+```text
+host reference
+measurement timestamp
+latency
+packet loss
+success state
+network status
+```
 
----
+Example conceptual result:
 
-## GET /measurements/{measurement_id}
-
-Returns a specific network measurement.
-
-Example response:
-
+```json
 {
-  "id": 101,
   "host_id": 1,
-  "measured_at": "2026-08-28T10:30:00",
-  "latency_ms": 24.5,
-  "packet_loss_pct": 0.0,
+  "latency_ms": 5.0,
+  "packet_loss_pct": 0,
   "success": true,
   "status": "OK"
 }
+```
+
+Exact response fields are defined by the current FastAPI schema.
 
 ---
 
-## GET /hosts/{host_id}/measurements
+## 9. Measurement Classification
 
-Returns historical measurements for a specific host.
+Every measurement is classified as:
+
+```text
+OK
+RISK
+FAILURE
+```
+
+### OK
+
+```text
+host responds
+latency < 300 ms
+packet loss < 1%
+```
+
+### RISK
+
+```text
+host responds
+and
+latency >= 300 ms
+```
+
+or:
+
+```text
+host responds
+and
+packet loss >= 1%
+and
+packet loss < 100%
+```
+
+### FAILURE
+
+```text
+host does not respond
+```
+
+or:
+
+```text
+packet loss = 100%
+```
+
+These values are project-defined prototype rules.
+
+---
+
+## 10. Retrieve Measurement History
+
+### Endpoint
+
+```http
+GET /hosts/{host_id}/measurements
+```
 
 Example:
 
-`GET /hosts/1/measurements`
+```http
+GET /hosts/1/measurements
+```
 
-Example response:
+The endpoint supports optional filters.
 
-[
-  {
-    "id": 101,
-    "measured_at": "2026-08-28T10:30:00",
-    "latency_ms": 24.5,
-    "packet_loss_pct": 0.0,
-    "success": true,
-    "status": "OK"
-  },
-  {
-    "id": 102,
-    "measured_at": "2026-08-28T10:35:00",
-    "latency_ms": 32.1,
-    "packet_loss_pct": 0.0,
-    "success": true,
-    "status": "OK"
-  }
-]
+Supported concepts include:
 
----
-
-# 7. Manual Monitoring
-
-The API may provide an endpoint for manually triggering an ICMP measurement during development and testing.
-
----
-
-## POST /hosts/{host_id}/measure
-
-Executes an ICMP monitoring operation for the selected host.
+```text
+status
+start_at
+end_at
+limit
+```
 
 Example:
 
-`POST /hosts/1/measure`
+```http
+GET /hosts/1/measurements?limit=10
+```
 
-Example response:
+Example date-filtered request:
 
-{
-  "measurement_id": 103,
-  "host_id": 1,
-  "measured_at": "2026-08-28T10:40:00",
-  "latency_ms": 28.4,
-  "packet_loss_pct": 0.0,
-  "success": true,
-  "status": "OK"
-}
+```http
+GET /hosts/1/measurements?start_at=2026-09-01T00:00:00Z&end_at=2026-09-02T00:00:00Z
+```
 
-This endpoint is intended to support development, testing and demonstration.
-
-Periodic monitoring may later be executed automatically by the backend service.
+The mobile History screen uses this endpoint.
 
 ---
 
-# 8. Network Status
+## 11. History Ordering
+
+Historical measurements are returned with recent measurements available for presentation.
+
+The mobile application uses:
+
+```text
+limit=1
+```
+
+when retrieving only the latest measurement.
+
+Conceptual request:
+
+```http
+GET /hosts/1/measurements?limit=1
+```
 
 ---
 
-## GET /hosts/{host_id}/status
-
-Returns the latest known network condition for a monitored host.
-
-Example response:
-
-{
-  "host_id": 1,
-  "host_name": "Main Router",
-  "status": "OK",
-  "user_status": "Good",
-  "last_measurement_at": "2026-08-28T10:40:00",
-  "latency_ms": 28.4,
-  "packet_loss_pct": 0.0
-}
-
-Possible internal statuses:
-
-- `OK`
-- `RISK`
-- `FAILURE`
-
-User-facing terminology may differ to provide simpler language.
-
----
-
-# 9. Predictions
-
-Predictions represent estimated future network conditions based on historical measurements and the analysis strategy defined by the project.
-
----
-
-## GET /hosts/{host_id}/predictions
-
-Returns available connectivity predictions for a host.
-
-Example response:
-
-[
-  {
-    "id": 20,
-    "host_id": 1,
-    "forecast_for": "2026-08-28T14:00:00",
-    "predicted_status": "OK",
-    "predicted_latency_ms": 30.2,
-    "predicted_packet_loss_pct": 1.0,
-    "confidence": null
-  },
-  {
-    "id": 21,
-    "host_id": 1,
-    "forecast_for": "2026-08-28T15:00:00",
-    "predicted_status": "RISK",
-    "predicted_latency_ms": 85.4,
-    "predicted_packet_loss_pct": 8.0,
-    "confidence": null
-  }
-]
-
-The use of a confidence value will depend on the final prediction method.
-
----
-
-## GET /hosts/{host_id}/predictions/{prediction_id}
-
-Returns details about a specific prediction.
-
-Example response:
-
-{
-  "id": 21,
-  "host_id": 1,
-  "forecast_for": "2026-08-28T15:00:00",
-  "predicted_status": "RISK",
-  "predicted_latency_ms": 85.4,
-  "predicted_packet_loss_pct": 8.0,
-  "confidence": null
-}
-
----
-
-# 10. Activity Recommendations
-
-The mobile application must help users understand whether the predicted connectivity is appropriate for common activities.
-
-Supported activity types may include:
-
-- video calls
-- audio calls
-- streaming
-- online gaming
-- web browsing
-- file transfers
-- messaging
-
----
-
-## GET /hosts/{host_id}/recommendations
-
-Returns activity recommendations based on the expected network condition.
-
-Possible query parameters:
-
-- activity
-- date
-- time
-
-Example request:
-
-`GET /hosts/1/recommendations?activity=video_call&time=2026-08-28T14:00:00`
-
-Example response:
-
-{
-  "host_id": 1,
-  "activity": "video_call",
-  "forecast_for": "2026-08-28T14:00:00",
-  "predicted_status": "OK",
-  "recommendation": "The connection is expected to be suitable for a video call during this period."
-}
-
-Another example:
-
-{
-  "host_id": 1,
-  "activity": "online_gaming",
-  "forecast_for": "2026-08-28T15:00:00",
-  "predicted_status": "RISK",
-  "recommendation": "The connection may present instability during this period."
-}
-
----
-
-# 11. Alerts
-
-Alerts represent network conditions that require user attention.
-
-This feature may be introduced after the monitoring and classification functionality is stable.
-
----
-
-## GET /alerts
-
-Returns generated alerts.
-
-Example response:
-
-[
-  {
-    "id": 10,
-    "host_id": 1,
-    "severity": "warning",
-    "message": "Network degradation detected.",
-    "created_at": "2026-08-28T15:00:00"
-  }
-]
-
----
-
-# 12. Health Check
-
----
-
-## GET /health
-
-Returns the current status of the backend service.
-
-Example response:
-
-{
-  "status": "ok"
-}
-
-This endpoint can be used to verify whether the API is running.
-
----
-
-# 13. Error Response Format
-
-The API should return understandable error responses.
+## 12. Filter by Status
 
 Example:
 
-{
-  "detail": "Host not found."
-}
+```http
+GET /hosts/1/measurements?status=RISK
+```
 
-Another example:
+The backend validates supported network status values.
 
-{
-  "detail": "Invalid IP address."
-}
+This allows historical analysis of:
 
-Errors exposed to users should avoid unnecessary technical details.
-
----
-
-# 14. API Validation
-
-Input data should be validated before processing.
-
-Examples include:
-
-- valid IP address format
-- required host name
-- valid identifiers
-- valid date and time values
-- supported activity types
-
-FastAPI validation features may be used to support this process.
+```text
+healthy periods
+degraded periods
+failure periods
+```
 
 ---
 
-# 15. API Documentation
+## 13. Measurement Summary
 
-FastAPI provides automatic interactive API documentation.
+### Endpoint
 
-During development, documentation may be available at:
+```http
+GET /hosts/{host_id}/measurements/summary
+```
 
-`/docs`
+Example:
+
+```http
+GET /hosts/1/measurements/summary
+```
+
+This endpoint provides aggregated information about historical measurements.
+
+The historical analysis conceptually includes values such as:
+
+```text
+measurement count
+latency statistics
+packet-loss statistics
+```
+
+The project also performs summary calculations in the mobile History interface.
+
+---
+
+# ALERTS
+
+## 14. Retrieve Alerts
+
+### Endpoint
+
+```http
+GET /hosts/{host_id}/alerts
+```
+
+Example:
+
+```http
+GET /hosts/1/alerts
+```
+
+The endpoint returns alerts associated with network measurements.
+
+The mobile Alerts screen consumes this endpoint.
+
+---
+
+## 15. Alert Severity
+
+The project uses alert severity according to network condition.
+
+### RISK
+
+```text
+warning
+```
+
+### FAILURE
+
+```text
+critical
+```
+
+### OK
+
+```text
+no alert
+```
+
+Conceptual relationship:
+
+```text
+Measurement
+    ↓
+Classification
+    ↓
+┌──────────┬──────────┬────────────┐
+│    OK    │   RISK   │  FAILURE   │
+├──────────┼──────────┼────────────┤
+│ No Alert │ Warning  │ Critical   │
+└──────────┴──────────┴────────────┘
+```
+
+---
+
+## 16. Alert Response Concepts
+
+An alert may contain information such as:
+
+```text
+id
+host_id
+measurement reference
+severity
+message
+read state
+created timestamp
+```
+
+The exact response contract is defined by the backend OpenAPI schema.
+
+The mobile interface presents alerts using:
+
+```text
+severity
+translated title
+translated explanation
+timestamp
+read/unread state
+```
+
+---
+
+# PREDICTIONS
+
+## 17. Generate Default Prediction
+
+### Endpoint
+
+```http
+POST /hosts/{host_id}/prediction
+```
+
+Example:
+
+```http
+POST /hosts/1/prediction
+```
+
+This generates a future connectivity prediction using recent historical measurements.
+
+The prediction service requires a minimum amount of historical information.
+
+Current requirement:
+
+```text
+at least 3 measurements
+```
+
+---
+
+## 18. Prediction Model
+
+The current predictor is a:
+
+```text
+statistical baseline
+```
+
+It is based on recent network measurements and linear trend estimation.
+
+It is not presented as a machine-learning model.
+
+The prediction process evaluates:
+
+```text
+latency trend
+packet-loss trend
+future timestamp
+predicted network state
+```
+
+---
+
+## 19. Prediction Output
+
+Prediction responses contain concepts such as:
+
+```text
+id
+host_id
+generated_at
+forecast_for
+predicted_latency_ms
+predicted_packet_loss_pct
+predicted_status
+confidence
+```
+
+Current confidence value:
+
+```text
+null
+```
+
+A formal confidence metric has not yet been implemented.
+
+---
+
+## 20. Predicted Network Status
+
+Predicted status uses the same classifier as real measurements.
+
+Supported values:
+
+```text
+OK
+RISK
+FAILURE
+```
+
+This reuse ensures that current-state classification and future-state classification follow consistent business rules.
+
+---
+
+## 21. Packet-Loss Limits
+
+Predicted packet loss is restricted to the valid range:
+
+```text
+0% to 100%
+```
+
+The automated test suite validates both lower and upper clamping behavior.
+
+---
+
+# CUSTOM FORECAST
+
+## 22. Generate Prediction for a Custom Time
+
+### Endpoint
+
+```http
+POST /hosts/{host_id}/predictions/forecast
+```
+
+Example:
+
+```http
+POST /hosts/1/predictions/forecast
+```
+
+### Request Body
+
+```json
+{
+  "forecast_for": "2026-09-04T03:16:00-03:00"
+}
+```
+
+The timestamp must represent a future time.
+
+---
+
+## 23. Timezone Requirement
+
+The requested forecast timestamp must contain timezone information.
+
+Valid example using a timezone offset:
+
+```text
+2026-09-04T03:16:00-03:00
+```
+
+Equivalent UTC value:
+
+```text
+2026-09-04T06:16:00Z
+```
+
+A timestamp without required timezone information is rejected.
+
+---
+
+## 24. Past Forecast Validation
+
+Requests for timestamps in the past are rejected.
+
+Conceptually:
+
+```text
+forecast_for <= current time
+        ↓
+validation error
+```
+
+This prevents logically invalid predictions.
+
+---
+
+# PREDICTION HISTORY
+
+## 25. Retrieve Predictions
+
+### Endpoint
+
+```http
+GET /hosts/{host_id}/predictions
+```
+
+Example:
+
+```http
+GET /hosts/1/predictions
+```
+
+Returns persisted predictions for the selected host.
+
+Optional historical filtering is supported by the backend implementation.
+
+---
+
+## 26. Retrieve Latest Prediction
+
+### Endpoint
+
+```http
+GET /hosts/{host_id}/predictions/latest
+```
+
+Example:
+
+```http
+GET /hosts/1/predictions/latest
+```
+
+The mobile Overview screen uses this endpoint.
+
+If no prediction exists for the host, the API can return a not-found response.
+
+The mobile application handles this state and displays:
+
+```text
+No prediction available
+```
+
+instead of showing fabricated data.
+
+---
+
+# ACTIVITY RECOMMENDATIONS
+
+## 27. Retrieve Recommendations
+
+### Endpoint
+
+```http
+GET /hosts/{host_id}/predictions/{prediction_id}/recommendations
+```
+
+Example:
+
+```http
+GET /hosts/1/predictions/10/recommendations
+```
+
+The endpoint evaluates a stored prediction and returns recommendations for supported network activities.
+
+---
+
+## 28. Supported Activities
+
+The recommendation engine supports:
+
+```text
+VIDEOCONFERENCE
+STREAMING
+ONLINE_GAMING
+WEB_BROWSING
+FILE_UPLOAD
+```
+
+The mobile application presents these using user-friendly labels.
+
+---
+
+## 29. Recommendation States
+
+Supported suitability values are:
+
+```text
+RECOMMENDED
+CAUTION
+NOT_RECOMMENDED
+```
+
+---
+
+## 30. Recommendations for OK
+
+When predicted network status is:
+
+```text
+OK
+```
+
+the supported activities are considered suitable.
+
+Conceptually:
+
+```text
+Videoconference → RECOMMENDED
+Streaming       → RECOMMENDED
+Online gaming   → RECOMMENDED
+Web browsing    → RECOMMENDED
+File upload     → RECOMMENDED
+```
+
+---
+
+## 31. Recommendations for RISK
+
+When predicted status is:
+
+```text
+RISK
+```
+
+the recommendation policy is:
+
+```text
+Videoconference → CAUTION
+Streaming       → CAUTION
+Online gaming   → CAUTION
+Web browsing    → RECOMMENDED
+File upload     → CAUTION
+```
+
+This reflects the idea that normal web browsing is generally less sensitive than real-time or high-throughput activities.
+
+---
+
+## 32. Recommendations for FAILURE
+
+When predicted status is:
+
+```text
+FAILURE
+```
+
+all supported activities are returned as:
+
+```text
+NOT_RECOMMENDED
+```
+
+---
+
+## 33. Recommendation Messages
+
+The backend returns semantic recommendation information.
+
+The mobile application maps activity and suitability combinations to localized explanations.
+
+This allows the recommendation interface to support:
+
+```text
+English
+Portuguese
+Spanish
+```
+
+without depending on an English-only backend message.
+
+---
+
+# MOBILE API INTEGRATION
+
+## 34. Mobile API Configuration
+
+The React Native application reads the backend address from:
+
+```text
+EXPO_PUBLIC_API_URL
+```
+
+Example development configuration:
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.1.13:8000
+```
+
+The actual address depends on the development machine's LAN IP.
+
+---
+
+## 35. Environment Example
+
+A repository-safe example can use:
+
+```env
+EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:8000
+```
+
+Machine-specific `.env` files should not be committed with private configuration.
+
+---
+
+## 36. Mobile API Client
+
+Backend communication is centralized in:
+
+```text
+apps/mobile/src/services/api.ts
+```
+
+The client uses the native:
+
+```text
+fetch
+```
+
+API.
+
+No additional HTTP client dependency is required.
+
+---
+
+## 37. Mobile Overview Requests
+
+The Overview screen conceptually performs:
+
+```text
+GET /hosts
+        ↓
+select active host
+        ↓
+GET /hosts/{id}/measurements?limit=1
+        +
+GET /hosts/{id}/predictions/latest
+```
+
+This provides:
+
+```text
+current measurement
+current status
+latest prediction
+```
+
+---
+
+## 38. Mobile History Requests
+
+The History screen uses:
+
+```http
+GET /hosts/{id}/measurements
+```
+
+with dynamically generated:
+
+```text
+start_at
+end_at
+limit
+```
+
+according to the selected range.
+
+Available user ranges include:
+
+```text
+24 hours
+7 days
+30 days
+```
+
+---
+
+## 39. Mobile Forecast Requests
+
+The Forecast screen performs:
+
+```text
+GET /hosts
+        ↓
+select active host
+        ↓
+POST /hosts/{id}/predictions/forecast
+        ↓
+prediction created
+        ↓
+GET /hosts/{id}/predictions/{prediction_id}/recommendations
+```
+
+This provides both:
+
+```text
+future network prediction
+```
 
 and:
 
-`/redoc`
-
-These interfaces can be used to inspect and test API endpoints.
+```text
+activity recommendations
+```
 
 ---
 
-# 16. Initial Endpoint Summary
+## 40. Mobile Alerts Requests
+
+The Alerts screen performs:
+
+```http
+GET /hosts/{id}/alerts
+```
+
+and renders:
+
+```text
+empty state
+warning alerts
+critical alerts
+summary counts
+```
+
+---
+
+# HTTP AND ERROR BEHAVIOR
+
+## 41. Successful Requests
+
+Successful API operations return standard HTTP success responses appropriate to each endpoint.
+
+Responses are encoded as:
+
+```text
+application/json
+```
+
+where applicable.
+
+---
+
+## 42. Validation Errors
+
+FastAPI and Pydantic validate incoming data.
+
+Examples of invalid input include:
+
+```text
+invalid IP address
+invalid forecast timestamp
+timestamp without timezone
+forecast timestamp in the past
+invalid measurement filters
+invalid classification values
+```
+
+Such requests are rejected with validation responses.
+
+---
+
+## 43. Host Not Found
+
+Endpoints that require a host ID validate that the host exists.
+
+Example:
+
+```http
+GET /hosts/999999
+```
+
+returns an error instead of silently creating or assuming a host.
+
+---
+
+## 44. Inactive Hosts
+
+Operations that require active monitoring validate host state where applicable.
+
+An inactive host may remain registered in the database while monitoring operations are rejected.
+
+This allows host configuration to be preserved without requiring deletion.
+
+---
+
+## 45. Duplicate Hosts
+
+Duplicate IP addresses are rejected during host registration.
+
+This prevents multiple conflicting monitored-host records using the same address.
+
+---
+
+## 46. Prediction Without Enough History
+
+Prediction generation requires sufficient historical measurements.
+
+Current minimum:
+
+```text
+3 measurements
+```
+
+When insufficient data exists, prediction generation is rejected instead of returning fabricated output.
+
+---
+
+## 47. Latest Prediction Not Found
+
+When no prediction exists:
+
+```http
+GET /hosts/{host_id}/predictions/latest
+```
+
+may return a not-found response.
+
+The mobile application explicitly handles this situation.
+
+---
+
+# DEVELOPMENT AND VALIDATION
+
+## 48. Real Host Validation
+
+The API was validated using:
+
+```text
+Google DNS
+8.8.8.8
+```
+
+Real ICMP measurements produced:
+
+```text
+success = true
+packet loss = 0%
+status = OK
+```
+
+---
+
+## 49. Failure Validation
+
+A controlled unreachable host was used to validate:
+
+```text
+success = false
+packet loss = 100%
+status = FAILURE
+```
+
+The failure condition also generated a:
+
+```text
+critical
+```
+
+alert.
+
+---
+
+## 50. RISK Validation
+
+The `RISK` state was validated through reproducible automated tests.
+
+Covered conditions include:
+
+```text
+latency at the configured threshold
+latency above the threshold
+packet loss at the threshold
+partial packet loss
+high latency and packet loss
+```
+
+The automated chain also validated:
+
+```text
+RISK
+    ↓
+warning alert
+    ↓
+RISK prediction
+    ↓
+CAUTION recommendations
+```
+
+---
+
+## 51. Prediction Validation
+
+A real prediction-versus-measurement validation was performed using:
+
+```text
+Google DNS
+8.8.8.8
+```
+
+Prediction:
+
+```text
+Predicted latency:
+8.13 ms
+
+Predicted packet loss:
+0%
+
+Predicted status:
+OK
+```
+
+Later real measurement:
+
+```text
+Observed latency:
+5.00 ms
+
+Observed packet loss:
+0%
+
+Observed status:
+OK
+```
+
+The status and packet-loss prediction matched the later real measurement.
+
+---
+
+# SECURITY AND CONFIGURATION
+
+## 52. Environment Variables
+
+Runtime-specific configuration is stored using environment variables.
+
+Examples include:
+
+```text
+database connection configuration
+mobile API base URL
+```
+
+Sensitive local configuration should not be committed to the repository.
+
+---
+
+## 53. Local Network Exposure
+
+For physical-device development, FastAPI is started with:
+
+```text
+--host 0.0.0.0
+```
+
+This allows devices on the local network to reach the development server.
+
+Example:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+This configuration is intended for controlled local development.
+
+Production deployment should use an appropriate application-server and network-security configuration.
+
+---
+
+# API TESTING
+
+## 54. Automated Tests
+
+API and service behavior are covered by the backend automated test suite.
+
+Final regression result:
+
+```text
+82 tests collected
+82 passed
+0 failed
+6 warnings
+```
+
+The warnings are dependency deprecation warnings and are not functional failures.
+
+---
+
+## 55. Manual Swagger Validation
+
+Swagger was used to manually validate important flows including:
+
+```text
+host registration
+host listing
+real ICMP measurement
+measurement history
+alerts
+prediction generation
+custom forecast
+prediction history
+activity recommendations
+```
+
+Swagger also provided evidence for the final project validation.
+
+---
+
+# API SUMMARY
+
+## 56. Main Endpoints
 
 | Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/health` | Verify API availability |
-| GET | `/hosts` | List monitored hosts |
-| POST | `/hosts` | Register a host |
-| GET | `/hosts/{host_id}` | Retrieve a host |
-| PUT | `/hosts/{host_id}` | Update a host |
-| POST | `/hosts/{host_id}/measure` | Execute an ICMP measurement |
-| GET | `/hosts/{host_id}/measurements` | Retrieve host history |
-| GET | `/hosts/{host_id}/status` | Retrieve current status |
-| GET | `/measurements` | Retrieve measurements |
-| GET | `/measurements/{measurement_id}` | Retrieve one measurement |
-| GET | `/hosts/{host_id}/predictions` | Retrieve predictions |
-| GET | `/hosts/{host_id}/predictions/{prediction_id}` | Retrieve prediction details |
-| GET | `/hosts/{host_id}/recommendations` | Retrieve activity recommendation |
-| GET | `/alerts` | Retrieve generated alerts |
+| --- | --- | --- |
+| POST | `/hosts` | Register monitored host |
+| GET | `/hosts` | List hosts |
+| GET | `/hosts/{host_id}` | Retrieve host |
+| PUT | `/hosts/{host_id}` | Update host |
+| POST | `/hosts/{host_id}/measure` | Execute ICMP measurement |
+| GET | `/hosts/{host_id}/measurements` | Retrieve measurement history |
+| GET | `/hosts/{host_id}/measurements/summary` | Retrieve measurement summary |
+| GET | `/hosts/{host_id}/alerts` | Retrieve alerts |
+| POST | `/hosts/{host_id}/prediction` | Generate default prediction |
+| GET | `/hosts/{host_id}/predictions` | Retrieve prediction history |
+| GET | `/hosts/{host_id}/predictions/latest` | Retrieve latest prediction |
+| POST | `/hosts/{host_id}/predictions/forecast` | Generate custom future forecast |
+| GET | `/hosts/{host_id}/predictions/{prediction_id}/recommendations` | Retrieve activity recommendations |
 
 ---
 
-# 17. API Development Order
+## 57. Complete API Flow
 
-The API should not be implemented all at once.
-
-Recommended implementation order:
-
-1. `GET /health`
-2. `POST /hosts`
-3. `GET /hosts`
-4. `GET /hosts/{host_id}`
-5. `POST /hosts/{host_id}/measure`
-6. `GET /hosts/{host_id}/measurements`
-7. `GET /hosts/{host_id}/status`
-8. prediction endpoints
-9. recommendation endpoint
-10. alert endpoints
-
-This order allows the monitoring and data foundation to be validated before prediction and recommendation features are introduced.
+```text
+Client
+   ↓
+FastAPI
+   ↓
+Host Validation
+   ↓
+Application Service
+   ↓
+┌──────────────────────────────┐
+│ ICMP Monitoring             │
+│ Measurement Processing      │
+│ Classification              │
+│ Alert Generation            │
+│ Prediction                  │
+│ Recommendations             │
+└──────────────────────────────┘
+   ↓
+SQLAlchemy
+   ↓
+PostgreSQL
+   ↓
+JSON Response
+   ↓
+Mobile Application
+```
 
 ---
 
-# 18. API Status
+## 58. API Design Principles
 
-Current status:
+The API follows the following practical principles:
 
-**Initial API contract defined**
+```text
+Validate input before processing.
+
+Do not fabricate measurements.
 
-No endpoint should be considered implemented until the corresponding backend functionality exists and has been tested.
+Do not generate predictions without sufficient data.
 
-This specification may evolve as the project architecture and requirements are refined.
+Use consistent network-status values.
 
-## Network Measurement Classification
+Reuse classification logic.
 
-Every new ICMP measurement is classified before being persisted.
+Separate API routing from business logic.
 
-The `status` property supports the following values:
+Persist historical information.
 
-- `OK`
-- `RISK`
-- `FAILURE`
+Return explicit errors for invalid operations.
 
-Example successful measurement:
+Keep environment-specific values outside UI code.
 
-```json
-{
-  "id": 15,
-  "host_id": 1,
-  "measured_at": "2026-08-30T22:00:00Z",
-  "latency_ms": 18.0,
-  "packet_loss_pct": 0.0,
-  "success": true,
-  "status": "OK",
-  "created_at": "2026-08-30T22:00:00Z"
-}
+Expose machine-readable JSON contracts.
 
-Example degraded measurement:
+Use OpenAPI documentation for development and validation.
+```
 
-{
-  "id": 16,
-  "host_id": 1,
-  "measured_at": "2026-08-30T22:01:00Z",
-  "latency_ms": 350.0,
-  "packet_loss_pct": 0.0,
-  "success": true,
-  "status": "RISK",
-  "created_at": "2026-08-30T22:01:00Z"
-}
+---
 
-Example unavailable host:
+## 59. Current API Limitations
 
-{
-  "id": 17,
-  "host_id": 1,
-  "measured_at": "2026-08-30T22:02:00Z",
-  "latency_ms": null,
-  "packet_loss_pct": 100.0,
-  "success": false,
-  "status": "FAILURE",
-  "created_at": "2026-08-30T22:02:00Z"
-}
+The current API represents a functional academic prototype.
 
-## Measurement History
+Current limitations include:
 
-Historical measurements can be retrieved through:
+```text
+no user authentication
+no authorization system
+no production deployment
+no public HTTPS deployment
+no distributed monitoring agents
+no WebSocket real-time stream
+no push-notification infrastructure
+no formal API versioning
+```
 
-`GET /hosts/{host_id}/measurements`
+These limitations do not prevent the implemented core monitoring, prediction, recommendation, and mobile-integration functionality from operating.
 
-The endpoint supports optional filters:
+---
 
-- `status`
-- `start_at`
-- `end_at`
-- `limit`
+## 60. Future API Improvements
 
-Example:
+Future versions may add:
 
-`GET /hosts/1/measurements?status=RISK&limit=10`
+```text
+authentication
+authorization
+API versioning
+pagination
+WebSocket updates
+push-notification integration
+multiple monitoring agents
+background task queues
+production rate limiting
+advanced observability
+cloud deployment
+prediction-confidence endpoint
+long-term analytics
+```
 
-Results are returned with the most recent measurement first.
+---
 
-## Measurement Summary
+## 61. Final API Status
 
-Aggregated historical statistics are available through:
+Implemented and validated functionality:
 
-`GET /hosts/{host_id}/measurements/summary`
-
-The response includes:
-
-- total number of measurements;
-- average latency;
-- minimum latency;
-- maximum latency;
-- average packet loss;
-- number of `OK` measurements;
-- number of `RISK` measurements;
-- number of `FAILURE` measurements.
-
-## Alerts
-
-Alerts can be retrieved through:
-
-`GET /hosts/{host_id}/alerts`
-
-Alert generation follows the network classification:
-
-- `OK` → no alert
-- `RISK` → `warning`
-- `FAILURE` → `critical`
-
-Each generated alert references the measurement that triggered it when applicable.
-
-## Connectivity Prediction
-
-A near-future connectivity prediction can be generated through:
-
-`POST /hosts/{host_id}/prediction`
-
-The prediction engine requires at least 3 historical measurements.
-
-If insufficient historical data is available, the API returns:
-
-`422 Unprocessable Entity`
-
-Example:
-
-```json
-{
-  "detail": "At least 3 measurements are required to generate a prediction."
-}
-
-A successful prediction returns:
-
-{
-  "id": 1,
-  "host_id": 1,
-  "generated_at": "2026-09-01T20:00:00Z",
-  "forecast_for": "2026-09-01T20:05:00Z",
-  "predicted_latency_ms": 35.0,
-  "predicted_packet_loss_pct": 0.0,
-  "predicted_status": "OK",
-  "confidence": null
-}
-
-Prediction Fields
-- `generated_at: time when the prediction was generated;`
-- `forecast_for: future time represented by the prediction;`
-- `predicted_latency_ms: estimated round-trip latency;`
-- `predicted_packet_loss_pct: estimated packet loss;`
-- `predicted_status: predicted network condition;`
-- `confidence: reserved for a future defensible confidence metric.`
-
-The default forecast horizon is currently 5 minutes.
-
-## Prediction Queries
-
-Generated predictions can be retrieved through:
-
-`GET /hosts/{host_id}/predictions`
-
-The endpoint returns stored predictions ordered by most recently generated first.
-
-An optional `limit` parameter controls the maximum number of returned records.
-
-Example:
-
-`GET /hosts/1/predictions?limit=10`
-
-The latest available prediction can be retrieved through:
-
-`GET /hosts/{host_id}/predictions/latest`
-
-If the host has no generated predictions, the latest prediction endpoint returns:
-
-`404 Not Found`
-
-## Prediction Time Selection
-
-A connectivity prediction can be generated for a user-selected future date and time through:
-
-POST /hosts/{host_id}/predictions/forecast
-
-### Request Example
-
-{
-  "forecast_for": "2026-09-01T20:00:00-03:00"
-}
-
-### Forecast Time Rules
-
-The selected forecast time:
-
-- must be in the future;
-- must include timezone information;
-- is normalized to UTC before persistence.
-
-If the selected forecast time is in the past or represents the current time, the API returns:
-
-422 Unprocessable Entity
-
-Example response:
-
-{
-  "detail": "forecast_for must be in the future."
-}
-
-If timezone information is missing, the API returns:
-
-422 Unprocessable Entity
-
-Example response:
-
-{
-  "detail": "forecast_for must include timezone information."
-}
-
-### Successful Response
-
-A successful request returns a persisted prediction containing:
-
-- prediction ID;
-- monitored host ID;
-- prediction generation timestamp;
-- selected forecast timestamp;
-- predicted latency;
-- predicted packet loss;
-- predicted network status;
-- confidence value, when available.
-
-Example:
-
-{
-  "id": 10,
-  "host_id": 1,
-  "generated_at": "2026-09-01T22:00:00Z",
-  "forecast_for": "2026-09-01T23:00:00Z",
-  "predicted_latency_ms": 32.5,
-  "predicted_packet_loss_pct": 0.0,
-  "predicted_status": "OK",
-  "confidence": null
-}
-
-### Prediction Period Query
-
-Stored predictions can also be filtered by forecast period through:
-
-GET /hosts/{host_id}/predictions
-
-Supported optional query parameters:
-
-- start_at
-- end_at
-- limit
-
-Example:
-
-GET /hosts/1/predictions?start_at=2026-09-01T18:00:00-03:00&end_at=2026-09-01T22:00:00-03:00
-
-The endpoint returns only predictions whose forecast_for timestamp falls inside the selected interval.
-
-Predictions are ordered by forecast time.
-
-### Invalid Period
-
-If start_at is later than end_at, the API returns:
-
-422 Unprocessable Entity
-
-Example response:
-
-{
-  "detail": "start_at cannot be later than end_at."
-}
-
-### Timezone Handling
-
-Client applications may send timezone-aware timestamps using offsets such as:
-
-2026-09-01T20:00:00-03:00
-
-The backend converts forecast timestamps to UTC before persistence.
-
-For example:
-
-2026-09-01T20:00:00-03:00
-
-represents the same instant as:
-
-2026-09-01T23:00:00Z
-
-This provides consistent timestamp storage while allowing clients to work with their local timezone.
-
-## Activity Recommendations
-
-Activity recommendations are generated from an existing connectivity prediction.
-
-The endpoint is:
-
-GET /hosts/{host_id}/predictions/{prediction_id}/recommendations
-
-The endpoint uses the predicted network condition to provide understandable guidance for common online activities.
-
-Supported activities:
-
-- videoconference;
-- streaming;
-- online gaming;
-- web browsing;
-- file upload.
-
-### Recommendation Levels
-
-The API uses three suitability levels:
-
-- recommended;
-- caution;
-- not_recommended.
-
-### OK Predictions
-
-When the predicted network status is OK, all supported activities are considered recommended.
-
-### RISK Predictions
-
-When the predicted status is RISK:
-
-- videoconference requires caution;
-- streaming requires caution;
-- online gaming requires caution;
-- web browsing remains recommended;
-- file uploads require caution.
-
-The response includes simple explanatory messages describing possible degradation.
-
-### FAILURE Predictions
-
-When the predicted status is FAILURE, supported online activities are marked as not recommended because connectivity is expected to be unavailable.
-
-### Response Example
-
-{
-  "host_id": 1,
-  "prediction_id": 10,
-  "predicted_status": "OK",
-  "recommendations": [
-    {
-      "activity": "videoconference",
-      "suitability": "recommended",
-      "message": "The connection is suitable for video conferences."
-    },
-    {
-      "activity": "streaming",
-      "suitability": "recommended",
-      "message": "The connection is suitable for streaming."
-    }
-  ]
-}
-
-Recommendations are derived dynamically and are not stored as separate database records.
-
-This prevents unnecessary duplication because recommendations can always be recreated from the associated prediction.
+```text
+Host registration                         ✅
+Host listing                              ✅
+Host retrieval                            ✅
+Host update                               ✅
+IP validation                             ✅
+Duplicate-host validation                 ✅
+Active/inactive host support              ✅
+Real ICMP measurement                     ✅
+Measurement persistence                   ✅
+Measurement history                       ✅
+Measurement filters                       ✅
+Measurement summary                       ✅
+OK classification                         ✅
+RISK classification                       ✅
+FAILURE classification                    ✅
+Warning alerts                            ✅
+Critical alerts                           ✅
+Default prediction                        ✅
+Custom future prediction                  ✅
+Timezone validation                       ✅
+Past-time rejection                       ✅
+Prediction persistence                    ✅
+Prediction history                        ✅
+Latest prediction                         ✅
+Activity recommendations                  ✅
+Swagger documentation                     ✅
+Mobile API integration                    ✅
+82/82 automated tests                      ✅
+```
+
+---
+
+## 62. Conclusion
+
+The ICMP Network Failure Predictor API provides the communication layer between low-level network monitoring and the mobile user interface.
+
+The API transforms:
+
+```text
+HTTP request
+```
+
+into:
+
+```text
+network monitoring
+```
+
+which becomes:
+
+```text
+structured measurement data
+```
+
+which can then produce:
+
+```text
+classification
+alerts
+historical analysis
+prediction
+recommendations
+```
+
+The complete operational flow is:
+
+```text
+React Native / Swagger
+        ↓
+FastAPI
+        ↓
+Monitoring and Business Services
+        ↓
+PostgreSQL
+        ↓
+Prediction and Recommendation
+        ↓
+JSON Response
+        ↓
+User Interface
+```
+
+The current API has been validated using automated tests, real ICMP measurements, controlled failure scenarios, prediction experiments, and real mobile integration.
+
+It provides a stable foundation for the current prototype and for future expansion into continuous network monitoring and larger-scale network observability.
