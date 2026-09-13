@@ -5,7 +5,14 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import Alert, Host, Measurement, Prediction
+from app.models import (
+    Alert,
+    Host,
+    Measurement,
+    Prediction,
+    User,
+)
+from app.routers.auth import router as auth_router
 from app.routers.hosts import router as hosts_router
 from app.services.monitoring_scheduler import (
     MonitoringScheduler,
@@ -51,11 +58,12 @@ app = FastAPI(
         "REST API for network monitoring, "
         "analysis and connectivity prediction."
     ),
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
 
+app.include_router(auth_router)
 app.include_router(hosts_router)
 
 
@@ -69,7 +77,7 @@ def health_check():
         "service": (
             "icmp-network-failure-predictor-api"
         ),
-        "version": "0.2.0",
+        "version": "0.3.0",
         "automatic_monitoring": {
             "enabled": (
                 settings.auto_monitor_enabled

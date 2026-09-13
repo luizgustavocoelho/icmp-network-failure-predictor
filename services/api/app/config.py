@@ -1,5 +1,17 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+API_DIRECTORY = (
+    Path(__file__)
+    .resolve()
+    .parent
+    .parent
+)
+
+ENV_FILE = API_DIRECTORY / ".env"
 
 
 class Settings(BaseSettings):
@@ -26,9 +38,19 @@ class Settings(BaseSettings):
         gt=0,
     )
 
+    auth_jwt_secret: str
+
+    auth_jwt_algorithm: str = "HS256"
+
+    auth_access_token_expire_minutes: int = Field(
+        default=1440,
+        gt=0,
+    )
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     @property
