@@ -30,9 +30,11 @@ def login_user(
     )
 
 
-def test_register_user(client):
+def test_register_user(
+    anonymous_client,
+):
     response = register_user(
-        client
+        anonymous_client
     )
 
     assert response.status_code == 201
@@ -40,11 +42,14 @@ def test_register_user(client):
     data = response.json()
 
     assert data["name"] == "Luiz"
+
     assert (
         data["email"]
         == "luiz@example.com"
     )
+
     assert data["is_active"] is True
+
     assert "id" in data
     assert "created_at" in data
     assert "updated_at" in data
@@ -54,10 +59,10 @@ def test_register_user(client):
 
 
 def test_register_duplicate_email(
-    client,
+    anonymous_client,
 ):
     first_response = register_user(
-        client
+        anonymous_client
     )
 
     assert (
@@ -67,7 +72,7 @@ def test_register_duplicate_email(
 
     duplicate_response = (
         register_user(
-            client,
+            anonymous_client,
             name="Other User",
         )
     )
@@ -79,25 +84,23 @@ def test_register_duplicate_email(
 
 
 def test_login_returns_access_token(
-    client,
+    anonymous_client,
 ):
     register_user(
-        client
+        anonymous_client
     )
 
     response = login_user(
-        client
+        anonymous_client
     )
 
     assert response.status_code == 200
 
     data = response.json()
 
-    assert (
-        isinstance(
-            data["access_token"],
-            str,
-        )
+    assert isinstance(
+        data["access_token"],
+        str,
     )
 
     assert data["access_token"]
@@ -114,14 +117,14 @@ def test_login_returns_access_token(
 
 
 def test_login_rejects_wrong_password(
-    client,
+    anonymous_client,
 ):
     register_user(
-        client
+        anonymous_client
     )
 
     response = login_user(
-        client,
+        anonymous_client,
         password="WrongPassword",
     )
 
@@ -135,9 +138,9 @@ def test_login_rejects_wrong_password(
 
 
 def test_auth_me_requires_token(
-    client,
+    anonymous_client,
 ):
-    response = client.get(
+    response = anonymous_client.get(
         "/auth/me"
     )
 
@@ -145,14 +148,14 @@ def test_auth_me_requires_token(
 
 
 def test_auth_me_returns_current_user(
-    client,
+    anonymous_client,
 ):
     register_user(
-        client
+        anonymous_client
     )
 
     login_response = login_user(
-        client
+        anonymous_client
     )
 
     access_token = (
@@ -160,7 +163,7 @@ def test_auth_me_returns_current_user(
         .json()["access_token"]
     )
 
-    response = client.get(
+    response = anonymous_client.get(
         "/auth/me",
         headers={
             "Authorization": (

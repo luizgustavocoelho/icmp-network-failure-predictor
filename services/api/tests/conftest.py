@@ -1,13 +1,21 @@
 import os
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
 
 
+API_DIRECTORY = (
+    Path(__file__)
+    .resolve()
+    .parents[1]
+)
+
 load_dotenv(
-    ".env.test",
+    API_DIRECTORY / ".env.test",
     override=True,
 )
+
 
 os.environ[
     "AUTO_MONITOR_ENABLED"
@@ -50,6 +58,9 @@ from app.models.host import Host
 from app.models.measurement import Measurement
 from app.models.prediction import Prediction
 from app.models.user import User
+from app.services.auth_service import (
+    create_access_token,
+)
 
 
 settings.auto_monitor_enabled = False
@@ -144,12 +155,57 @@ app.dependency_overrides[
 ] = override_get_db
 
 
+def create_default_test_user() -> User:
+    with TestingSessionLocal() as db:
+        user = User(
+            name="Default Test User",
+            email="default-test@example.com",
+            password_hash=(
+                "not-used-by-authenticated-"
+                "test-client"
+            ),
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        db.expunge(user)
+
+        return user
+
+
 @pytest.fixture
-def client():
+def anonymous_client():
     settings.auto_monitor_enabled = False
     monitoring_scheduler.enabled = False
 
     with TestClient(
         app
     ) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def client():
+    settings.auto_monitor_enabled = False
+    monitoring_scheduler.enabled = False
+
+    user = create_default_test_user()
+
+    access_token = create_access_token(
+        user.id
+    )
+
+    with TestClient(
+        app
+    ) as test_client:
+        test_client.headers.update(
+            {
+                "Authorization": (
+                    f"Bearer {access_token}"
+                )
+            }
+        )
+
         yield test_client

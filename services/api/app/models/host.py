@@ -4,10 +4,8 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
-    Index,
     String,
     UniqueConstraint,
-    text,
     func,
 )
 from sqlalchemy.dialects.postgresql import INET
@@ -25,14 +23,6 @@ class Host(Base):
             "ip_address",
             name="uq_hosts_user_ip",
         ),
-        Index(
-            "uq_hosts_legacy_ip",
-            "ip_address",
-            unique=True,
-            postgresql_where=text(
-                "user_id IS NULL"
-            ),
-        ),
     )
 
     id: Mapped[int] = mapped_column(
@@ -40,12 +30,12 @@ class Host(Base):
         autoincrement=True,
     )
 
-    user_id: Mapped[int | None] = mapped_column(
+    user_id: Mapped[int] = mapped_column(
         ForeignKey(
             "users.id",
             ondelete="CASCADE",
         ),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 
