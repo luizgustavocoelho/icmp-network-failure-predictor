@@ -2,18 +2,33 @@ import os
 
 import pytest
 from dotenv import load_dotenv
+
+
+# Load test-specific environment variables first.
+load_dotenv(".env.test", override=True)
+
+# The automatic background monitor must never run during tests.
+os.environ["AUTO_MONITOR_ENABLED"] = "false"
+
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import settings
 from app.database import Base, get_db
-from app.main import app
+from app.main import app, monitoring_scheduler
+from app.models.alert import Alert
 from app.models.host import Host
 from app.models.measurement import Measurement
-from app.models.alert import Alert
 from app.models.prediction import Prediction
 
-load_dotenv(".env.test")
+
+# Extra protection:
+# even if the application/settings were imported earlier by pytest,
+# force monitoring off for the entire test process.
+settings.auto_monitor_enabled = False
+monitoring_scheduler.enabled = False
 
 
 TEST_DATABASE_URL = (
@@ -71,5 +86,10 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture
 def client():
+    # Guarantee the background monitor remains disabled
+    # before FastAPI's lifespan starts.
+    settings.auto_monitor_enabled = False
+    monitoring_scheduler.enabled = False
+
     with TestClient(app) as test_client:
         yield test_client
