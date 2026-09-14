@@ -85,6 +85,43 @@ Cisco Packet Tracer is used as an additional simulation environment for network-
 
 ---
 
+## 2.1 V2 Platform Extensions
+
+The final V2 adds:
+
+```text
+JWT authentication
+Password hashing
+Per-user host ownership
+Multi-user data isolation
+Automatic monitoring scheduler
+Neon PostgreSQL compatibility
+Public HTTPS demo access through Tailscale Funnel
+Standalone Android APK
+Docker-ready backend
+```
+
+Validated demo runtime:
+
+```text
+Android APK
+    |
+    | HTTPS
+    v
+Tailscale Funnel
+    |
+    v
+FastAPI on monitoring PC
+    |
+    +--> ICMP monitoring
+    +--> automatic scheduler
+    |
+    v
+Neon PostgreSQL
+```
+
+The ICMP perspective belongs to the backend monitoring node. The mobile client consumes the resulting data but does not execute continuous ICMP monitoring itself.
+
 ## 3. Main Architecture Diagram
 
 ```text
@@ -1633,8 +1670,8 @@ The architecture was validated through multiple layers.
 ### Automated Backend Validation
 
 ```text
-82 tests
-82 passed
+101 tests
+101 passed
 0 failed
 ```
 
@@ -1741,72 +1778,60 @@ without changing the core business logic.
 
 ## 56. Current Architectural Limitations
 
-The current project is a functional prototype.
+The current project is a functional V2 academic prototype.
 
-Some limitations remain.
+### Monitoring Node Availability
 
-### Local Development Deployment
+The validated public demo uses a self-hosted FastAPI monitoring node exposed through Tailscale Funnel. The API is unavailable when that node is powered off or FastAPI is stopped.
 
-The backend currently runs as a local development service.
+### Monitoring Perspective
 
-A production deployment architecture is not implemented.
+ICMP is executed by the backend node. A remote mobile user therefore sees measurements generated from the backend node's network path, not directly from the user's own Wi-Fi or mobile connection.
+
+A future distributed-agent architecture could perform measurements inside each user's network.
 
 ### Monitoring Scheduling
 
-The prototype supports periodic monitoring logic, but a production-grade distributed scheduling infrastructure is outside the current scope.
+An in-process automatic scheduler is implemented and validated. A production-grade distributed worker/scheduling cluster remains outside the current scope.
 
 ### Prediction Model
 
-The prediction engine is a statistical baseline.
-
-It is not a machine-learning model.
+The prediction engine is a statistical baseline. It is not a machine-learning model.
 
 ### Prediction Confidence
 
-No formal confidence metric is currently calculated.
-
-Therefore:
+A formal confidence metric has not been implemented.
 
 ```text
 confidence = null
 ```
 
-### User Authentication
+### Push Notifications and Streaming
 
-Authentication and multi-user account management are outside the current project scope.
+Alerts are available through the application, but operating-system push notifications and WebSocket streaming are not implemented.
 
-### Push Notifications
+### Accessibility Certification
 
-Alerts are displayed through the application.
-
-Operating-system push-notification infrastructure is not part of the current prototype.
-
----
+Accessibility-oriented implementation is included, but formal certification-level multi-device TalkBack/VoiceOver auditing remains future work.
 
 ## 57. Future Architecture Opportunities
 
 Future versions may introduce:
 
 ```text
-Dockerized deployment
-cloud-hosted FastAPI
-managed PostgreSQL
-background task workers
-continuous monitoring scheduler
+independent 24/7 cloud compute
+distributed per-user monitoring agents
 WebSocket real-time updates
 push notifications
-user authentication
-multiple monitoring locations
 machine-learning prediction
 prediction confidence scoring
 long-term analytics
 observability and logging platform
 CI/CD deployment pipeline
+production autoscaling
 ```
 
 The current modular structure allows these capabilities to be added incrementally.
-
----
 
 ## 58. Architecture Principles
 

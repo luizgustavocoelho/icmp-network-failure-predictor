@@ -137,13 +137,16 @@ Project documentation is maintained inside the `docs/` directory.
 
 ## Project Status
 
-🚧 **In development**
+The Packet Tracer artifact is complete and validated.
 
-Current phase:
+```text
+Final topology             COMPLETE
+Normal ICMP operation      PASSED
+Failure simulation         PASSED
+Recovery                   PASSED
+```
 
-**Requirements and architecture definition**
-
----
+The simulation remains separate from the real FastAPI runtime and is used to demonstrate routing, ICMP failure and recovery concepts.
 
 ## Academic Context
 

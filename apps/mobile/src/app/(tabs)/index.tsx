@@ -14,15 +14,16 @@ import {
 
 import {
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
-import {
-  useFocusEffect,
-} from "expo-router";
-
 import LanguageSelector
   from "../../components/LanguageSelector";
+
+import SelectedHostCard
+  from "../../components/SelectedHostCard";
 
 import {
   colors,
@@ -33,11 +34,14 @@ import {
 } from "../../constants/theme";
 
 import {
+  useHosts,
+} from "../../context/HostContext";
+
+import {
   useLanguage,
 } from "../../context/LanguageContext";
 
 import {
-  getHosts,
   getLatestMeasurement,
   getLatestPrediction,
 } from "../../services/api";
@@ -49,10 +53,27 @@ import {
 } from "../../types/api";
 
 
+const AUTO_REFRESH_INTERVAL_MS =
+  5000;
+
+
+type DashboardLoadMode =
+  | "initial"
+  | "refresh"
+  | "silent";
+
+
 export default function HomeScreen() {
   const {
     t,
   } = useLanguage();
+
+  const {
+    selectedHost,
+  } = useHosts();
+
+  const selectedHostId =
+    selectedHost?.id ?? null;
 
   const [
     measurement,
@@ -83,31 +104,53 @@ export default function HomeScreen() {
     setError,
   ] = useState(false);
 
+  const requestInFlightRef =
+    useRef(false);
+
+  const hasLoadedRef =
+    useRef(false);
+
 
   const loadDashboard =
     useCallback(
       async (
-        isRefresh = false
+        mode:
+          DashboardLoadMode =
+            "initial"
       ) => {
+        if (
+          requestInFlightRef.current
+        ) {
+          return;
+        }
+
+        requestInFlightRef.current =
+          true;
+
         try {
-          if (isRefresh) {
-            setRefreshing(true);
-          } else {
-            setLoading(true);
+          if (
+            mode === "refresh"
+          ) {
+            setRefreshing(
+              true
+            );
+          } else if (
+            mode === "initial"
+          ) {
+            setLoading(
+              true
+            );
           }
 
-          setError(false);
+          if (
+            mode !== "silent"
+          ) {
+            setError(
+              false
+            );
+          }
 
-          const hosts =
-            await getHosts();
-
-          const activeHost =
-            hosts.find(
-              (host) =>
-                host.is_active
-            ) ?? hosts[0];
-
-          if (!activeHost) {
+          if (selectedHostId === null) {
             setMeasurement(
               null
             );
@@ -115,6 +158,13 @@ export default function HomeScreen() {
             setPrediction(
               null
             );
+
+            setError(
+              false
+            );
+
+            hasLoadedRef.current =
+              true;
 
             return;
           }
@@ -125,11 +175,11 @@ export default function HomeScreen() {
           ] =
             await Promise.all([
               getLatestMeasurement(
-                activeHost.id
+                selectedHostId
               ),
 
               getLatestPrediction(
-                activeHost.id
+                selectedHostId
               ),
             ]);
 
@@ -140,6 +190,13 @@ export default function HomeScreen() {
           setPrediction(
             latestPrediction
           );
+
+          setError(
+            false
+          );
+
+          hasLoadedRef.current =
+            true;
         } catch (
           requestError
         ) {
@@ -147,21 +204,74 @@ export default function HomeScreen() {
             requestError
           );
 
-          setError(true);
+          if (
+            mode !== "silent"
+          ) {
+            setError(
+              true
+            );
+          }
         } finally {
-          setLoading(false);
-          setRefreshing(false);
+          if (
+            mode === "initial"
+          ) {
+            setLoading(
+              false
+            );
+          }
+
+          if (
+            mode === "refresh"
+          ) {
+            setRefreshing(
+              false
+            );
+          }
+
+          requestInFlightRef.current =
+            false;
         }
       },
-      []
+      [
+        selectedHostId,
+      ]
     );
 
 
-  useFocusEffect(
-    useCallback(() => {
-      loadDashboard();
-    }, [loadDashboard])
-  );
+  useEffect(() => {
+    hasLoadedRef.current =
+      false;
+
+    const initialLoadId =
+      setTimeout(
+        () => {
+          void loadDashboard(
+            "initial"
+          );
+        },
+        0
+      );
+
+    const intervalId =
+      setInterval(
+        () => {
+          void loadDashboard(
+            "silent"
+          );
+        },
+        AUTO_REFRESH_INTERVAL_MS
+      );
+
+    return () => {
+      clearTimeout(
+        initialLoadId
+      );
+
+      clearInterval(
+        intervalId
+      );
+    };
+  }, [loadDashboard]);
 
 
   function statusLabel(
@@ -343,7 +453,7 @@ export default function HomeScreen() {
             }
             onRefresh={() =>
               loadDashboard(
-                true
+                "refresh"
               )
             }
             tintColor={
@@ -404,6 +514,8 @@ export default function HomeScreen() {
             <LanguageSelector />
           </View>
         </View>
+
+        <SelectedHostCard />
 
 
         {loading && (
@@ -473,7 +585,9 @@ export default function HomeScreen() {
 
               <Pressable
                 onPress={() =>
-                  loadDashboard()
+                  loadDashboard(
+                    "initial"
+                  )
                 }
                 style={({
                   pressed,

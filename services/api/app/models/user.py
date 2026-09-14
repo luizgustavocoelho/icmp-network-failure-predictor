@@ -3,40 +3,20 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
-    ForeignKey,
     String,
-    UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 
-class Host(Base):
-    __tablename__ = "hosts"
-
-    __table_args__ = (
-        UniqueConstraint(
-            "user_id",
-            "ip_address",
-            name="uq_hosts_user_ip",
-        ),
-    )
+class User(Base):
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True,
-    )
-
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey(
-            "users.id",
-            ondelete="CASCADE",
-        ),
-        nullable=False,
-        index=True,
     )
 
     name: Mapped[str] = mapped_column(
@@ -44,14 +24,16 @@ class Host(Base):
         nullable=False,
     )
 
-    ip_address: Mapped[str] = mapped_column(
-        INET,
+    email: Mapped[str] = mapped_column(
+        String(255),
         nullable=False,
+        unique=True,
+        index=True,
     )
 
-    description: Mapped[str | None] = mapped_column(
+    password_hash: Mapped[str] = mapped_column(
         String(255),
-        nullable=True,
+        nullable=False,
     )
 
     is_active: Mapped[bool] = mapped_column(

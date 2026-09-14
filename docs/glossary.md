@@ -1020,8 +1020,8 @@ A Python testing framework.
 The final backend regression suite produced:
 
 ```text
-82 tests collected
-82 passed
+101 tests passed
+101 passed
 0 failed
 ```
 
@@ -1584,3 +1584,35 @@ alert severity behavior
 ```
 
 This distinction helps keep the prototype technically transparent and academically defensible.
+
+## V2 Platform Terms
+
+### Authentication
+Process of verifying a user's identity before protected API access.
+
+### Authorization
+Process of validating whether an authenticated user owns or may access a resource.
+
+### JWT
+JSON Web Token used by the backend authentication flow.
+
+### Multi-User Isolation
+Rule that prevents one user from accessing another user's hosts and associated monitoring data.
+
+### Scheduler
+Backend component that automatically measures active hosts at configured intervals.
+
+### Neon
+Managed PostgreSQL service used for the validated V2 cloud database.
+
+### Tailscale Funnel
+Public HTTPS entry point used by the validated demo to expose the self-hosted FastAPI backend.
+
+### Standalone APK
+Installable Android application package that does not depend on Expo Go or Metro after installation.
+
+### Monitoring Node
+Machine where the backend executes ICMP measurements. In the current demo this is the PC running FastAPI.
+
+### Docker
+Container packaging used to make the backend portable and include required system dependencies such as `ping`.

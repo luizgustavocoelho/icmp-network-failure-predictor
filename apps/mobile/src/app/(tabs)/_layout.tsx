@@ -15,9 +15,21 @@ import {
   useLanguage,
 } from "../../context/LanguageContext";
 
+import {
+  getAuthTranslations,
+} from "../../i18n/auth";
+
 
 export default function TabLayout() {
-  const { t } = useLanguage();
+  const {
+    t,
+    language,
+  } = useLanguage();
+
+  const authCopy =
+    getAuthTranslations(
+      language
+    );
 
   return (
     <Tabs
@@ -138,6 +150,28 @@ export default function TabLayout() {
           }) => (
             <Ionicons
               name="notifications-outline"
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title:
+            authCopy.tabAccount,
+
+          tabBarAccessibilityLabel:
+            authCopy.tabAccount,
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <Ionicons
+              name="person-outline"
               size={size}
               color={color}
             />

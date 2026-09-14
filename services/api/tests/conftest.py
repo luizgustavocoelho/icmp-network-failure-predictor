@@ -1,25 +1,78 @@
 import os
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, delete
-from sqlalchemy.orm import Session, sessionmaker
 
+
+API_DIRECTORY = (
+    Path(__file__)
+    .resolve()
+    .parents[1]
+)
+
+load_dotenv(
+    API_DIRECTORY / ".env.test",
+    override=True,
+)
+
+
+os.environ[
+    "AUTO_MONITOR_ENABLED"
+] = "false"
+
+os.environ[
+    "AUTH_JWT_SECRET"
+] = (
+    "test-only-jwt-secret-"
+    "do-not-use-in-production"
+)
+
+os.environ[
+    "AUTH_JWT_ALGORITHM"
+] = "HS256"
+
+os.environ[
+    "AUTH_ACCESS_TOKEN_EXPIRE_MINUTES"
+] = "60"
+
+
+from fastapi.testclient import TestClient
+from sqlalchemy import (
+    create_engine,
+    delete,
+)
+from sqlalchemy.orm import (
+    Session,
+    sessionmaker,
+)
+
+from app.config import settings
 from app.database import Base, get_db
-from app.main import app
+from app.main import (
+    app,
+    monitoring_scheduler,
+)
+from app.models.alert import Alert
 from app.models.host import Host
 from app.models.measurement import Measurement
-from app.models.alert import Alert
 from app.models.prediction import Prediction
+from app.models.user import User
+from app.services.auth_service import (
+    create_access_token,
+)
 
-load_dotenv(".env.test")
+
+settings.auto_monitor_enabled = False
+monitoring_scheduler.enabled = False
 
 
 TEST_DATABASE_URL = (
     f"postgresql+psycopg://"
-    f"{os.getenv('TEST_DB_USER')}:{os.getenv('TEST_DB_PASSWORD')}"
-    f"@{os.getenv('TEST_DB_HOST')}:{os.getenv('TEST_DB_PORT')}"
+    f"{os.getenv('TEST_DB_USER')}:"
+    f"{os.getenv('TEST_DB_PASSWORD')}"
+    f"@{os.getenv('TEST_DB_HOST')}:"
+    f"{os.getenv('TEST_DB_PORT')}"
     f"/{os.getenv('TEST_DB_NAME')}"
 )
 
@@ -37,23 +90,53 @@ TestingSessionLocal = sessionmaker(
 )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(
+    scope="session",
+    autouse=True,
+)
 def prepare_test_database():
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
+    Base.metadata.drop_all(
+        bind=test_engine
+    )
+
+    Base.metadata.create_all(
+        bind=test_engine
+    )
 
     yield
 
-    Base.metadata.drop_all(bind=test_engine)
+    Base.metadata.drop_all(
+        bind=test_engine
+    )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(
+    autouse=True,
+)
 def clean_database():
-    with Session(test_engine) as db:
-        db.execute(delete(Alert))
-        db.execute(delete(Prediction))
-        db.execute(delete(Measurement))
-        db.execute(delete(Host))
+    with Session(
+        test_engine
+    ) as db:
+        db.execute(
+            delete(Alert)
+        )
+
+        db.execute(
+            delete(Prediction)
+        )
+
+        db.execute(
+            delete(Measurement)
+        )
+
+        db.execute(
+            delete(Host)
+        )
+
+        db.execute(
+            delete(User)
+        )
+
         db.commit()
 
 
@@ -62,14 +145,67 @@ def override_get_db():
 
     try:
         yield db
+
     finally:
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[
+    get_db
+] = override_get_db
+
+
+def create_default_test_user() -> User:
+    with TestingSessionLocal() as db:
+        user = User(
+            name="Default Test User",
+            email="default-test@example.com",
+            password_hash=(
+                "not-used-by-authenticated-"
+                "test-client"
+            ),
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        db.expunge(user)
+
+        return user
+
+
+@pytest.fixture
+def anonymous_client():
+    settings.auto_monitor_enabled = False
+    monitoring_scheduler.enabled = False
+
+    with TestClient(
+        app
+    ) as test_client:
+        yield test_client
 
 
 @pytest.fixture
 def client():
-    with TestClient(app) as test_client:
+    settings.auto_monitor_enabled = False
+    monitoring_scheduler.enabled = False
+
+    user = create_default_test_user()
+
+    access_token = create_access_token(
+        user.id
+    )
+
+    with TestClient(
+        app
+    ) as test_client:
+        test_client.headers.update(
+            {
+                "Authorization": (
+                    f"Bearer {access_token}"
+                )
+            }
+        )
+
         yield test_client

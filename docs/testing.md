@@ -35,7 +35,7 @@ The system uses three network classifications:
 
 The backend uses `pytest` as the automated testing framework.
 
-The final regression test was executed from:
+The final V2 regression was executed from:
 
 ```text
 services/api
@@ -44,36 +44,29 @@ services/api
 using:
 
 ```bash
-pytest -v
+pytest -q
 ```
 
 Final result:
 
 ```text
-82 tests collected
-82 passed
+101 passed
+0 failed
 6 warnings
-Execution time: 1.28s
+Execution time: 3.04s
 ```
 
 Therefore:
 
 ```text
-Automated tests passed: 82/82
+Automated tests passed: 101/101
 Success rate: 100%
 Failed tests: 0
 ```
 
-The warnings reported during execution are dependency deprecation warnings and do not represent functional failures in the application.
+The warnings are dependency deprecation warnings and do not represent functional failures.
 
-The warnings are mainly related to:
-
-- Starlette `TestClient`;
-- deprecated HTTP 422 constants.
-
-These warnings are considered technical debt for future dependency upgrades and do not affect the current functionality of the prototype.
-
----
+The V2 regression suite includes authentication, multi-user ownership/isolation, host CRUD, monitoring, history, alerts, predictions and recommendations.
 
 ## 3. Host Management Tests
 
@@ -1162,12 +1155,42 @@ The mobile application displays information generated from the real monitoring p
 
 ---
 
+## 29.1 V2 Integration Validation
+
+Additional V2 runtime validation was completed for:
+
+```text
+Authentication registration/login/me
+Multi-user ownership and isolation
+Automatic scheduler
+Mobile host CRUD
+Selected-host behavior
+Neon PostgreSQL
+Public HTTPS through Tailscale Funnel
+Standalone Android APK
+Physical Android installation
+5G end-to-end connectivity
+TypeScript validation
+Expo lint
+```
+
+The standalone APK was tested with Wi-Fi disabled and mobile data enabled. It successfully consumed the public API without Expo Go or Metro.
+
+Mobile host-management runtime validation covered create, edit, pause, reactivate, select and delete using a disposable test host.
+
+Static mobile checks:
+
+```text
+npx tsc --noEmit    PASSED
+npm run lint        PASSED
+```
+
 ## 30. Final Test Status
 
 ### Automated Backend Tests
 
 ```text
-82 passed
+101 passed
 0 failed
 6 warnings
 ```
@@ -1175,32 +1198,27 @@ The mobile application displays information generated from the real monitoring p
 ### Functional and Integration Validation
 
 ```text
+Authentication                           PASSED
+Multi-user isolation                     PASSED
+Host CRUD                                PASSED
+Automatic monitoring scheduler           PASSED
 Real OK scenario                         PASSED
 Controlled RISK scenario                 PASSED
-Real FAILURE scenario                    PASSED
+Controlled FAILURE scenario              PASSED
 Warning alert                            PASSED
 Critical alert                           PASSED
 Prediction generation                    PASSED
 Prediction vs real measurement           PASSED
 Activity recommendations                 PASSED
-Mobile API integration                   PASSED
-Overview real data                       PASSED
-Overview pull-to-refresh                 PASSED
-History visualization                    PASSED
-History filters                          PASSED
-Forecast interface                       PASSED
-Future date/time selection               PASSED
-Alerts interface                         PASSED
-Internationalization                     PASSED
-Large-font accessibility                 PASSED
-Status without color dependency          PASSED
-Minimum touch-target validation          PASSED
-Packet Tracer normal operation           PASSED
-Packet Tracer failure scenario           PASSED
-Packet Tracer recovery                   PASSED
+Neon PostgreSQL                          PASSED
+Public HTTPS API                         PASSED
+Standalone Android APK                   PASSED
+Physical Android installation            PASSED
+5G end-to-end mobile access              PASSED
+TypeScript                               PASSED
+Expo lint                                PASSED
+Packet Tracer normal/failure/recovery    PASSED
 ```
-
----
 
 ## 31. Conclusion
 
@@ -1221,7 +1239,7 @@ The testing strategy combines:
 The final automated regression suite completed successfully with:
 
 ```text
-82/82 tests passing
+101/101 tests passing
 ```
 
 The system was also validated through real and controlled scenarios representing:
@@ -1243,5 +1261,5 @@ Future work may include:
 - more advanced statistical or machine-learning models;
 - a formal confidence metric;
 - production deployment;
-- continuous monitoring infrastructure;
+- distributed monitoring infrastructure;
 - expanded network analytics.

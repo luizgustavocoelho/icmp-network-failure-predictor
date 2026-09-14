@@ -24,6 +24,9 @@ import {
   useState,
 } from "react";
 
+import SelectedHostCard
+  from "../../components/SelectedHostCard";
+
 import {
   colors,
   radius,
@@ -31,6 +34,10 @@ import {
   touchTarget,
   typography,
 } from "../../constants/theme";
+
+import {
+  useHosts,
+} from "../../context/HostContext";
 
 import {
   useLanguage,
@@ -42,7 +49,6 @@ import {
 
 import {
   generateForecastPrediction,
-  getHosts,
   getRecommendations,
 } from "../../services/api";
 
@@ -65,6 +71,13 @@ export default function ForecastScreen() {
     language,
     t,
   } = useLanguage();
+
+  const {
+    selectedHost,
+  } = useHosts();
+
+  const selectedHostId =
+    selectedHost?.id ?? null;
 
   const [
     selectedDate,
@@ -118,6 +131,17 @@ export default function ForecastScreen() {
     useState<string | null>(
       null
     );
+
+
+  const displayedPrediction =
+    prediction?.host_id === selectedHostId
+      ? prediction
+      : null;
+
+  const displayedRecommendations =
+    displayedPrediction
+      ? recommendations
+      : [];
 
 
   function locale() {
@@ -229,16 +253,7 @@ export default function ForecastScreen() {
       setLoading(true);
       setError(null);
 
-      const hosts =
-        await getHosts();
-
-      const activeHost =
-        hosts.find(
-          (host) =>
-            host.is_active
-        ) ?? hosts[0];
-
-      if (!activeHost) {
+      if (!selectedHost) {
         throw new Error(
           t(
             "connectionError"
@@ -259,7 +274,7 @@ export default function ForecastScreen() {
 
       const generatedPrediction =
         await generateForecastPrediction(
-          activeHost.id,
+          selectedHost.id,
           selectedDate.toISOString()
         );
 
@@ -269,7 +284,7 @@ export default function ForecastScreen() {
 
       const recommendationResponse =
         await getRecommendations(
-          activeHost.id,
+          selectedHost.id,
           generatedPrediction.id
         );
 
@@ -562,6 +577,8 @@ export default function ForecastScreen() {
           )}
         </Text>
 
+        <SelectedHostCard />
+
         <Text
           style={
             styles.sectionTitle
@@ -827,7 +844,7 @@ export default function ForecastScreen() {
           </View>
         )}
 
-        {prediction && (
+        {displayedPrediction && (
           <>
             <Text
               style={
@@ -846,7 +863,7 @@ export default function ForecastScreen() {
                 {
                   borderColor:
                     statusColor(
-                      prediction.predicted_status
+                      displayedPrediction.predicted_status
                     ),
                 },
               ]}
@@ -854,7 +871,7 @@ export default function ForecastScreen() {
               accessibilityLabel={`${t(
                 "predictedCondition"
               )}: ${statusLabel(
-                prediction.predicted_status
+                displayedPrediction.predicted_status
               )}`}
             >
               <View
@@ -883,7 +900,7 @@ export default function ForecastScreen() {
                     }
                   >
                     {formatDateTime(
-                      prediction.forecast_for
+                      displayedPrediction.forecast_for
                     )}
                   </Text>
                 </View>
@@ -895,12 +912,12 @@ export default function ForecastScreen() {
                     {
                       backgroundColor:
                         statusBackground(
-                          prediction.predicted_status
+                          displayedPrediction.predicted_status
                         ),
 
                       borderColor:
                         statusColor(
-                          prediction.predicted_status
+                          displayedPrediction.predicted_status
                         ),
                     },
                   ]}
@@ -912,13 +929,13 @@ export default function ForecastScreen() {
                       {
                         color:
                           statusColor(
-                            prediction.predicted_status
+                            displayedPrediction.predicted_status
                           ),
                       },
                     ]}
                   >
                     {statusLabel(
-                      prediction.predicted_status
+                      displayedPrediction.predicted_status
                     )}
                   </Text>
                 </View>
@@ -950,8 +967,8 @@ export default function ForecastScreen() {
                     }
                   >
                     {
-                      prediction.predicted_latency_ms ??
-                      "—"
+                      displayedPrediction.predicted_latency_ms ??
+                      "â€”"
                     }
                     {" "}
                     ms
@@ -979,8 +996,8 @@ export default function ForecastScreen() {
                     }
                   >
                     {
-                      prediction.predicted_packet_loss_pct ??
-                      "—"
+                      displayedPrediction.predicted_packet_loss_pct ??
+                      "â€”"
                     }
                     {" "}
                     %
@@ -1009,7 +1026,7 @@ export default function ForecastScreen() {
               )}
             </Text>
 
-            {recommendations.map(
+            {displayedRecommendations.map(
               (
                 recommendation
               ) => (

@@ -62,7 +62,7 @@ The objective is to allow a user to understand the current network situation wit
 
 ## 2. Supported Mobile Screens
 
-Accessibility considerations were applied to the four main application screens:
+Accessibility considerations were applied to the main authenticated application areas:
 
 ```text
 Overview
@@ -85,6 +85,25 @@ Empty states
 ```
 
 ---
+
+## V2 Accessibility Scope
+
+The authenticated V2 application includes:
+
+```text
+Login
+Register
+Overview
+History
+Forecast
+Alerts
+Profile
+Host Management
+```
+
+The five primary protected tabs are Overview, History, Forecast, Alerts and Profile. Host Management is a separate protected route.
+
+A formal certification-level TalkBack/VoiceOver audit remains future work and is not claimed as complete.
 
 ## 3. Navigation Structure
 
@@ -727,7 +746,7 @@ important information remained accessible
 screens did not become unusable
 ```
 
-The four main screens remained usable during the performed font-size validation.
+The main application screens remained usable during the performed font-size validation.
 
 ---
 
@@ -789,7 +808,7 @@ screen edges
 
 ## 27. Predictable Visual Hierarchy
 
-The four major screens follow a similar visual structure.
+The major information screens follow a similar visual structure.
 
 Typical structure:
 

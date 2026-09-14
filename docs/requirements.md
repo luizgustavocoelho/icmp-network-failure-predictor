@@ -184,7 +184,7 @@ invalid packet count rejection
 invalid timeout rejection
 ```
 
-The academic prototype focuses primarily on the monitoring logic rather than a production-grade distributed scheduler.
+The V2 backend includes a validated in-process automatic monitoring scheduler. A production-grade distributed scheduler remains outside the current scope.
 
 Status:
 
@@ -1216,8 +1216,8 @@ The backend must include automated tests for critical functionality.
 Final regression execution:
 
 ```text
-82 tests collected
-82 passed
+101 tests passed
+101 passed
 0 failed
 6 warnings
 ```
@@ -1420,6 +1420,27 @@ IMPLEMENTED
 
 ---
 
+## 60.1 V2 Platform Extensions
+
+Beyond RF01-RF09, the final platform implements:
+
+```text
+V2-01 User registration and login
+V2-02 Password hashing and token authentication
+V2-03 Per-user host ownership
+V2-04 Multi-user data isolation
+V2-05 Full mobile host CRUD
+V2-06 Selected-host persistence
+V2-07 Automatic monitoring scheduler
+V2-08 DATABASE_URL / managed PostgreSQL support
+V2-09 Neon PostgreSQL runtime validation
+V2-10 Public HTTPS API validation
+V2-11 Standalone Android APK
+V2-12 Docker-ready backend
+```
+
+Runtime validation also demonstrated the installed Android APK consuming the public HTTPS API over 5G.
+
 # SCOPE BOUNDARIES
 
 ## 61. Current Prototype Scope
@@ -1428,42 +1449,43 @@ The current project includes:
 
 ```text
 real ICMP monitoring
-host management
+automatic monitoring scheduler
+user authentication
+per-user authorization and data isolation
+host management and mobile CRUD
 historical storage
 network classification
 alerts
 prediction
 recommendations
 REST API
-mobile application
+managed PostgreSQL compatibility
+public HTTPS demo access
+standalone Android APK
+Docker-ready backend
 three languages
 accessibility implementation
 Packet Tracer simulation
 automated testing
 ```
 
----
-
 ## 62. Out-of-Scope Functionality
 
 The current academic prototype does not require:
 
 ```text
-user authentication
-multi-tenant accounts
-production cloud deployment
+independent 24/7 cloud compute
 commercial SLA guarantees
-distributed monitoring agents
+distributed per-user monitoring agents
 push-notification infrastructure
 real-time WebSocket streaming
 machine-learning model training
 formal prediction-confidence scoring
 full accessibility certification
+production autoscaling
 ```
 
-These may be considered future improvements.
-
----
+These may be considered future improvements. Authentication, multi-user accounts, automatic scheduling, managed PostgreSQL support, public HTTPS demo access and Android standalone distribution are already implemented in V2.
 
 # REQUIREMENT TRACEABILITY
 
@@ -1560,7 +1582,7 @@ Accessibility visual validation           ✅
 Packet Tracer normal scenario             ✅
 Packet Tracer failure scenario            ✅
 Packet Tracer recovery                    ✅
-82/82 automated backend tests              ✅
+101/101 automated backend tests              ✅
 ```
 
 ---

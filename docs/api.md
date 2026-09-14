@@ -52,6 +52,24 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## 1.1 Authentication and Authorization
+
+V2 includes account-based API access.
+
+Authentication endpoints:
+
+```http
+POST /auth/register
+POST /auth/login
+GET /auth/me
+```
+
+Protected host operations require a valid access token.
+
+Hosts are owned by users, and host-scoped operations validate ownership before exposing measurements, alerts or predictions.
+
+The same IP may be registered by different users because uniqueness is scoped to the owning user.
+
 ## 2. Interactive API Documentation
 
 FastAPI automatically exposes Swagger/OpenAPI documentation.
@@ -217,6 +235,18 @@ active state
 Input validation continues to apply during updates.
 
 ---
+
+## 7.1 Delete Host
+
+### Endpoint
+
+```http
+DELETE /hosts/{host_id}
+```
+
+Deletes a host owned by the authenticated user.
+
+The mobile application uses this endpoint as part of the final host-management CRUD flow.
 
 # ICMP MEASUREMENTS
 
@@ -1282,8 +1312,8 @@ API and service behavior are covered by the backend automated test suite.
 Final regression result:
 
 ```text
-82 tests collected
-82 passed
+101 tests passed
+101 passed
 0 failed
 6 warnings
 ```
@@ -1397,33 +1427,39 @@ Use OpenAPI documentation for development and validation.
 
 ## 59. Current API Limitations
 
-The current API represents a functional academic prototype.
+The current API is a functional authenticated academic prototype.
+
+Implemented in V2:
+
+```text
+user authentication
+authorization
+multi-user host ownership
+public HTTPS demo access
+managed PostgreSQL compatibility
+automatic monitoring
+```
 
 Current limitations include:
 
 ```text
-no user authentication
-no authorization system
-no production deployment
-no public HTTPS deployment
+backend runtime depends on the monitoring node
 no distributed monitoring agents
 no WebSocket real-time stream
 no push-notification infrastructure
-no formal API versioning
+no formal public API versioning
+no production rate limiting
+no independent 24/7 compute guarantee
 ```
 
-These limitations do not prevent the implemented core monitoring, prediction, recommendation, and mobile-integration functionality from operating.
-
----
+These limitations do not prevent the implemented monitoring, prediction, recommendation and mobile-integration flows from operating.
 
 ## 60. Future API Improvements
 
 Future versions may add:
 
 ```text
-authentication
-authorization
-API versioning
+formal API versioning
 pagination
 WebSocket updates
 push-notification integration
@@ -1431,12 +1467,10 @@ multiple monitoring agents
 background task queues
 production rate limiting
 advanced observability
-cloud deployment
+independent 24/7 cloud compute
 prediction-confidence endpoint
 long-term analytics
 ```
-
----
 
 ## 61. Final API Status
 
@@ -1470,7 +1504,13 @@ Latest prediction                         ✅
 Activity recommendations                  ✅
 Swagger documentation                     ✅
 Mobile API integration                    ✅
-82/82 automated tests                      ✅
+User authentication                       ✅
+Multi-user authorization                   ✅
+Automatic monitoring scheduler             ✅
+Neon PostgreSQL validation                 ✅
+Public HTTPS demo access                   ✅
+Standalone Android APK integration         ✅
+101/101 automated tests                      ✅
 ```
 
 ---
