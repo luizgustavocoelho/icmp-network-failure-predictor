@@ -14,12 +14,10 @@ import {
 
 import {
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from "react";
-
-import {
-  useFocusEffect,
-} from "expo-router";
 
 import LanguageSelector
   from "../../components/LanguageSelector";
@@ -47,6 +45,16 @@ import {
   NetworkStatus,
   Prediction,
 } from "../../types/api";
+
+
+const AUTO_REFRESH_INTERVAL_MS =
+  5000;
+
+
+type DashboardLoadMode =
+  | "initial"
+  | "refresh"
+  | "silent";
 
 
 export default function HomeScreen() {
@@ -83,20 +91,51 @@ export default function HomeScreen() {
     setError,
   ] = useState(false);
 
+  const requestInFlightRef =
+    useRef(false);
+
+  const hasLoadedRef =
+    useRef(false);
+
 
   const loadDashboard =
     useCallback(
       async (
-        isRefresh = false
+        mode:
+          DashboardLoadMode =
+            "initial"
       ) => {
+        if (
+          requestInFlightRef.current
+        ) {
+          return;
+        }
+
+        requestInFlightRef.current =
+          true;
+
         try {
-          if (isRefresh) {
-            setRefreshing(true);
-          } else {
-            setLoading(true);
+          if (
+            mode === "refresh"
+          ) {
+            setRefreshing(
+              true
+            );
+          } else if (
+            mode === "initial"
+          ) {
+            setLoading(
+              true
+            );
           }
 
-          setError(false);
+          if (
+            mode !== "silent"
+          ) {
+            setError(
+              false
+            );
+          }
 
           const hosts =
             await getHosts();
@@ -115,6 +154,13 @@ export default function HomeScreen() {
             setPrediction(
               null
             );
+
+            setError(
+              false
+            );
+
+            hasLoadedRef.current =
+              true;
 
             return;
           }
@@ -140,6 +186,13 @@ export default function HomeScreen() {
           setPrediction(
             latestPrediction
           );
+
+          setError(
+            false
+          );
+
+          hasLoadedRef.current =
+            true;
         } catch (
           requestError
         ) {
@@ -147,21 +200,61 @@ export default function HomeScreen() {
             requestError
           );
 
-          setError(true);
+          if (
+            mode !== "silent"
+          ) {
+            setError(
+              true
+            );
+          }
         } finally {
-          setLoading(false);
-          setRefreshing(false);
+          if (
+            mode === "initial"
+          ) {
+            setLoading(
+              false
+            );
+          }
+
+          if (
+            mode === "refresh"
+          ) {
+            setRefreshing(
+              false
+            );
+          }
+
+          requestInFlightRef.current =
+            false;
         }
       },
       []
     );
 
 
-  useFocusEffect(
-    useCallback(() => {
-      loadDashboard();
-    }, [loadDashboard])
-  );
+  useEffect(() => {
+    void loadDashboard(
+      hasLoadedRef.current
+        ? "silent"
+        : "initial"
+    );
+
+    const intervalId =
+      setInterval(
+        () => {
+          void loadDashboard(
+            "silent"
+          );
+        },
+        AUTO_REFRESH_INTERVAL_MS
+      );
+
+    return () => {
+      clearInterval(
+        intervalId
+      );
+    };
+  }, [loadDashboard]);
 
 
   function statusLabel(
@@ -343,7 +436,7 @@ export default function HomeScreen() {
             }
             onRefresh={() =>
               loadDashboard(
-                true
+                "refresh"
               )
             }
             tintColor={
@@ -473,7 +566,9 @@ export default function HomeScreen() {
 
               <Pressable
                 onPress={() =>
-                  loadDashboard()
+                  loadDashboard(
+                    "initial"
+                  )
                 }
                 style={({
                   pressed,

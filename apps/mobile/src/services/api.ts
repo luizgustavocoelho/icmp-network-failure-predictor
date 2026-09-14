@@ -1,10 +1,18 @@
 import {
   Host,
+  LoginRequest,
   Measurement,
   NetworkAlert,
   Prediction,
   RecommendationResponse,
+  RegisterRequest,
+  TokenResponse,
+  User,
 } from "../types/api";
+
+import {
+  getAccessToken,
+} from "./authStorage";
 
 
 const API_URL =
@@ -18,13 +26,84 @@ if (!API_URL) {
 }
 
 
+type UnauthorizedHandler =
+  () => void | Promise<void>;
+
+
+let unauthorizedHandler:
+  | UnauthorizedHandler
+  | null = null;
+
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(
+    message: string,
+    status: number
+  ) {
+    super(message);
+
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+
+export function setUnauthorizedHandler(
+  handler: UnauthorizedHandler | null
+) {
+  unauthorizedHandler = handler;
+
+  return () => {
+    if (
+      unauthorizedHandler === handler
+    ) {
+      unauthorizedHandler = null;
+    }
+  };
+}
+
+
+type RequestConfiguration = {
+  authenticated?: boolean;
+  notifyUnauthorized?: boolean;
+};
+
+
 async function request<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
+  configuration: RequestConfiguration = {}
 ): Promise<T> {
+  const {
+    authenticated = true,
+    notifyUnauthorized = true,
+  } = configuration;
+
+  const headers =
+    new Headers(
+      options?.headers
+    );
+
+  if (authenticated) {
+    const token =
+      await getAccessToken();
+
+    if (token) {
+      headers.set(
+        "Authorization",
+        `Bearer ${token}`
+      );
+    }
+  }
+
   const response = await fetch(
     `${API_URL}${endpoint}`,
-    options
+    {
+      ...options,
+      headers,
+    }
   );
 
   if (!response.ok) {
@@ -36,19 +115,90 @@ async function request<T>(
       const body =
         await response.json();
 
-      detail =
-        body?.detail;
+      if (
+        typeof body?.detail
+        === "string"
+      ) {
+        detail = body.detail;
+      }
     } catch {
       detail = undefined;
     }
 
-    throw new Error(
+    if (
+      response.status === 401 &&
+      notifyUnauthorized &&
+      unauthorizedHandler
+    ) {
+      void unauthorizedHandler();
+    }
+
+    throw new ApiError(
       detail ??
-        `API request failed with status ${response.status}.`
+        `API request failed with status ${response.status}.`,
+      response.status
     );
   }
 
   return response.json() as Promise<T>;
+}
+
+
+export async function registerUser(
+  data: RegisterRequest
+): Promise<User> {
+  return request<User>(
+    "/auth/register",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify(
+        data
+      ),
+    },
+    {
+      authenticated: false,
+      notifyUnauthorized: false,
+    }
+  );
+}
+
+
+export async function loginUser(
+  data: LoginRequest
+): Promise<TokenResponse> {
+  return request<TokenResponse>(
+    "/auth/login",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify(
+        data
+      ),
+    },
+    {
+      authenticated: false,
+      notifyUnauthorized: false,
+    }
+  );
+}
+
+
+export async function getCurrentUser():
+  Promise<User> {
+  return request<User>(
+    "/auth/me"
+  );
 }
 
 
@@ -133,21 +283,20 @@ export async function getLatestMeasurement(
 export async function getLatestPrediction(
   hostId: number
 ): Promise<Prediction | null> {
-  const response = await fetch(
-    `${API_URL}/hosts/${hostId}/predictions/latest`
-  );
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `API request failed with status ${response.status}.`
+  try {
+    return await request<Prediction>(
+      `/hosts/${hostId}/predictions/latest`
     );
-  }
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status === 404
+    ) {
+      return null;
+    }
 
-  return response.json() as Promise<Prediction>;
+    throw error;
+  }
 }
 
 

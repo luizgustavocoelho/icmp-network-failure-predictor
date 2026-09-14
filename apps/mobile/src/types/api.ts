@@ -4,6 +4,36 @@ export type NetworkStatus =
   | "FAILURE";
 
 
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in_seconds: number;
+};
+
+
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+
+export type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+
 export type Host = {
   id: number;
   name: string;
@@ -81,5 +111,6 @@ export type RecommendationResponse = {
   host_id: number;
   prediction_id: number;
   predicted_status: NetworkStatus;
-  recommendations: ActivityRecommendation[];
+  recommendations:
+    ActivityRecommendation[];
 };
