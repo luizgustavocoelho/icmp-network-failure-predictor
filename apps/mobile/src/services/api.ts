@@ -1,5 +1,7 @@
 import {
   Host,
+  HostCreateInput,
+  HostUpdateInput,
   LoginRequest,
   Measurement,
   NetworkAlert,
@@ -14,10 +16,8 @@ import {
   getAccessToken,
 } from "./authStorage";
 
-
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL;
-
 
 if (!API_URL) {
   throw new Error(
@@ -25,15 +25,12 @@ if (!API_URL) {
   );
 }
 
-
 type UnauthorizedHandler =
   () => void | Promise<void>;
-
 
 let unauthorizedHandler:
   | UnauthorizedHandler
   | null = null;
-
 
 export class ApiError extends Error {
   status: number;
@@ -43,12 +40,10 @@ export class ApiError extends Error {
     status: number
   ) {
     super(message);
-
     this.name = "ApiError";
     this.status = status;
   }
 }
-
 
 export function setUnauthorizedHandler(
   handler: UnauthorizedHandler | null
@@ -64,12 +59,10 @@ export function setUnauthorizedHandler(
   };
 }
 
-
 type RequestConfiguration = {
   authenticated?: boolean;
   notifyUnauthorized?: boolean;
 };
-
 
 async function request<T>(
   endpoint: string,
@@ -140,9 +133,14 @@ async function request<T>(
     );
   }
 
+  if (
+    response.status === 204
+  ) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
-
 
 export async function registerUser(
   data: RegisterRequest
@@ -151,12 +149,10 @@ export async function registerUser(
     "/auth/register",
     {
       method: "POST",
-
       headers: {
         "Content-Type":
           "application/json",
       },
-
       body: JSON.stringify(
         data
       ),
@@ -167,7 +163,6 @@ export async function registerUser(
     }
   );
 }
-
 
 export async function loginUser(
   data: LoginRequest
@@ -176,12 +171,10 @@ export async function loginUser(
     "/auth/login",
     {
       method: "POST",
-
       headers: {
         "Content-Type":
           "application/json",
       },
-
       body: JSON.stringify(
         data
       ),
@@ -193,14 +186,12 @@ export async function loginUser(
   );
 }
 
-
 export async function getCurrentUser():
   Promise<User> {
   return request<User>(
     "/auth/me"
   );
 }
-
 
 export async function getHosts(): Promise<
   Host[]
@@ -210,6 +201,61 @@ export async function getHosts(): Promise<
   );
 }
 
+export async function getHost(
+  hostId: number
+): Promise<Host> {
+  return request<Host>(
+    `/hosts/${hostId}`
+  );
+}
+
+export async function createHost(
+  data: HostCreateInput
+): Promise<Host> {
+  return request<Host>(
+    "/hosts",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      body: JSON.stringify(
+        data
+      ),
+    }
+  );
+}
+
+export async function updateHost(
+  hostId: number,
+  data: HostUpdateInput
+): Promise<Host> {
+  return request<Host>(
+    `/hosts/${hostId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      body: JSON.stringify(
+        data
+      ),
+    }
+  );
+}
+
+export async function deleteHost(
+  hostId: number
+): Promise<void> {
+  return request<void>(
+    `/hosts/${hostId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
 
 export async function getMeasurements(
   hostId: number,
@@ -264,7 +310,6 @@ export async function getMeasurements(
   );
 }
 
-
 export async function getLatestMeasurement(
   hostId: number
 ): Promise<Measurement | null> {
@@ -278,7 +323,6 @@ export async function getLatestMeasurement(
 
   return measurements[0] ?? null;
 }
-
 
 export async function getLatestPrediction(
   hostId: number
@@ -299,7 +343,6 @@ export async function getLatestPrediction(
   }
 }
 
-
 export async function generateForecastPrediction(
   hostId: number,
   forecastFor: string
@@ -308,12 +351,10 @@ export async function generateForecastPrediction(
     `/hosts/${hostId}/predictions/forecast`,
     {
       method: "POST",
-
       headers: {
         "Content-Type":
           "application/json",
       },
-
       body: JSON.stringify({
         forecast_for:
           forecastFor,
@@ -321,7 +362,6 @@ export async function generateForecastPrediction(
     }
   );
 }
-
 
 export async function getRecommendations(
   hostId: number,
@@ -331,7 +371,6 @@ export async function getRecommendations(
     `/hosts/${hostId}/predictions/${predictionId}/recommendations`
   );
 }
-
 
 export async function getAlerts(
   hostId: number,

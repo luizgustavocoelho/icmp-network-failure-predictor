@@ -26,6 +26,9 @@ import {
 import NetworkLineChart
   from "../../components/NetworkLineChart";
 
+import SelectedHostCard
+  from "../../components/SelectedHostCard";
+
 import {
   colors,
   radius,
@@ -35,11 +38,14 @@ import {
 } from "../../constants/theme";
 
 import {
+  useHosts,
+} from "../../context/HostContext";
+
+import {
   useLanguage,
 } from "../../context/LanguageContext";
 
 import {
-  getHosts,
   getMeasurements,
 } from "../../services/api";
 
@@ -70,6 +76,13 @@ export default function HistoryScreen() {
     language,
     t,
   } = useLanguage();
+
+  const {
+    selectedHost,
+  } = useHosts();
+
+  const selectedHostId =
+    selectedHost?.id ?? null;
 
   const {
     width,
@@ -120,16 +133,7 @@ export default function HistoryScreen() {
 
           setError(false);
 
-          const hosts =
-            await getHosts();
-
-          const activeHost =
-            hosts.find(
-              (host) =>
-                host.is_active
-            ) ?? hosts[0];
-
-          if (!activeHost) {
+          if (selectedHostId === null) {
             setMeasurements(
               []
             );
@@ -153,7 +157,7 @@ export default function HistoryScreen() {
 
           const data =
             await getMeasurements(
-              activeHost.id,
+              selectedHostId,
               {
                 startAt:
                   startAt.toISOString(),
@@ -181,7 +185,10 @@ export default function HistoryScreen() {
           setRefreshing(false);
         }
       },
-      [period]
+      [
+        period,
+        selectedHostId,
+      ]
     );
 
 
@@ -386,7 +393,7 @@ export default function HistoryScreen() {
     unit: string
   ) {
     if (value === null) {
-      return "—";
+      return "â€”";
     }
 
     return `${value.toFixed(
@@ -480,6 +487,8 @@ export default function HistoryScreen() {
             "historyDescription"
           )}
         </Text>
+
+        <SelectedHostCard />
 
         <View
           style={
@@ -933,7 +942,7 @@ export default function HistoryScreen() {
                             }
                           >
                             {measurement.latency_ms ??
-                              "—"}
+                              "â€”"}
                             {" "}
                             ms
                           </Text>

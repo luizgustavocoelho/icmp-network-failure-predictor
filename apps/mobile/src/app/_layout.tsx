@@ -22,6 +22,10 @@ import {
 } from "../context/AuthContext";
 
 import {
+  HostProvider,
+} from "../context/HostContext";
+
+import {
   LanguageProvider,
 } from "../context/LanguageContext";
 
@@ -52,40 +56,46 @@ function RootNavigator() {
 
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
+    <HostProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
 
-        contentStyle: {
-          backgroundColor:
-            colors.background,
-        },
-      }}
-    >
-      <Stack.Protected
-        guard={
-          !isAuthenticated
-        }
+          contentStyle: {
+            backgroundColor:
+              colors.background,
+          },
+        }}
       >
-        <Stack.Screen
-          name="login"
-        />
+        <Stack.Protected
+          guard={
+            !isAuthenticated
+          }
+        >
+          <Stack.Screen
+            name="login"
+          />
 
-        <Stack.Screen
-          name="register"
-        />
-      </Stack.Protected>
+          <Stack.Screen
+            name="register"
+          />
+        </Stack.Protected>
 
-      <Stack.Protected
-        guard={
-          isAuthenticated
-        }
-      >
-        <Stack.Screen
-          name="(tabs)"
-        />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected
+          guard={
+            isAuthenticated
+          }
+        >
+          <Stack.Screen
+            name="(tabs)"
+          />
+
+          <Stack.Screen
+            name="hosts"
+          />
+        </Stack.Protected>
+      </Stack>
+    </HostProvider>
   );
 }
 

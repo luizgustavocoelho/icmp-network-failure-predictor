@@ -22,6 +22,9 @@ import {
 import LanguageSelector
   from "../../components/LanguageSelector";
 
+import SelectedHostCard
+  from "../../components/SelectedHostCard";
+
 import {
   colors,
   radius,
@@ -31,11 +34,14 @@ import {
 } from "../../constants/theme";
 
 import {
+  useHosts,
+} from "../../context/HostContext";
+
+import {
   useLanguage,
 } from "../../context/LanguageContext";
 
 import {
-  getHosts,
   getLatestMeasurement,
   getLatestPrediction,
 } from "../../services/api";
@@ -61,6 +67,13 @@ export default function HomeScreen() {
   const {
     t,
   } = useLanguage();
+
+  const {
+    selectedHost,
+  } = useHosts();
+
+  const selectedHostId =
+    selectedHost?.id ?? null;
 
   const [
     measurement,
@@ -137,16 +150,7 @@ export default function HomeScreen() {
             );
           }
 
-          const hosts =
-            await getHosts();
-
-          const activeHost =
-            hosts.find(
-              (host) =>
-                host.is_active
-            ) ?? hosts[0];
-
-          if (!activeHost) {
+          if (selectedHostId === null) {
             setMeasurement(
               null
             );
@@ -171,11 +175,11 @@ export default function HomeScreen() {
           ] =
             await Promise.all([
               getLatestMeasurement(
-                activeHost.id
+                selectedHostId
               ),
 
               getLatestPrediction(
-                activeHost.id
+                selectedHostId
               ),
             ]);
 
@@ -228,16 +232,25 @@ export default function HomeScreen() {
             false;
         }
       },
-      []
+      [
+        selectedHostId,
+      ]
     );
 
 
   useEffect(() => {
-    void loadDashboard(
-      hasLoadedRef.current
-        ? "silent"
-        : "initial"
-    );
+    hasLoadedRef.current =
+      false;
+
+    const initialLoadId =
+      setTimeout(
+        () => {
+          void loadDashboard(
+            "initial"
+          );
+        },
+        0
+      );
 
     const intervalId =
       setInterval(
@@ -250,6 +263,10 @@ export default function HomeScreen() {
       );
 
     return () => {
+      clearTimeout(
+        initialLoadId
+      );
+
       clearInterval(
         intervalId
       );
@@ -497,6 +514,8 @@ export default function HomeScreen() {
             <LanguageSelector />
           </View>
         </View>
+
+        <SelectedHostCard />
 
 
         {loading && (

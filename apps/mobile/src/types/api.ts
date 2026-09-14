@@ -3,7 +3,6 @@ export type NetworkStatus =
   | "RISK"
   | "FAILURE";
 
-
 export type User = {
   id: number;
   name: string;
@@ -13,26 +12,22 @@ export type User = {
   updated_at: string;
 };
 
-
 export type TokenResponse = {
   access_token: string;
   token_type: string;
   expires_in_seconds: number;
 };
 
-
 export type LoginRequest = {
   email: string;
   password: string;
 };
-
 
 export type RegisterRequest = {
   name: string;
   email: string;
   password: string;
 };
-
 
 export type Host = {
   id: number;
@@ -44,6 +39,15 @@ export type Host = {
   updated_at: string;
 };
 
+export type HostCreateInput = {
+  name: string;
+  ip_address: string;
+  description: string | null;
+};
+
+export type HostUpdateInput = HostCreateInput & {
+  is_active: boolean;
+};
 
 export type Measurement = {
   id: number;
@@ -56,7 +60,6 @@ export type Measurement = {
   created_at: string;
 };
 
-
 export type Prediction = {
   id: number;
   host_id: number;
@@ -68,12 +71,10 @@ export type Prediction = {
   confidence: number | null;
 };
 
-
 export type AlertSeverity =
   | "info"
   | "warning"
   | "critical";
-
 
 export type NetworkAlert = {
   id: number;
@@ -85,7 +86,6 @@ export type NetworkAlert = {
   created_at: string;
 };
 
-
 export type ActivityType =
   | "videoconference"
   | "streaming"
@@ -93,12 +93,10 @@ export type ActivityType =
   | "web_browsing"
   | "file_upload";
 
-
 export type ActivitySuitability =
   | "recommended"
   | "caution"
   | "not_recommended";
-
 
 export type ActivityRecommendation = {
   activity: ActivityType;
@@ -106,11 +104,9 @@ export type ActivityRecommendation = {
   message: string;
 };
 
-
 export type RecommendationResponse = {
   host_id: number;
   prediction_id: number;
   predicted_status: NetworkStatus;
-  recommendations:
-    ActivityRecommendation[];
+  recommendations: ActivityRecommendation[];
 };

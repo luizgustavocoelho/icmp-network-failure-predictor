@@ -3,6 +3,10 @@ import {
 } from "@expo/vector-icons";
 
 import {
+  router,
+} from "expo-router";
+
+import {
   Pressable,
   ScrollView,
   StyleSheet,
@@ -40,6 +44,10 @@ import {
   getAuthTranslations,
 } from "../../i18n/auth";
 
+import {
+  getHostTranslations,
+} from "../../i18n/hosts";
+
 
 export default function ProfileScreen() {
   const {
@@ -53,6 +61,11 @@ export default function ProfileScreen() {
 
   const copy =
     getAuthTranslations(
+      language
+    );
+
+  const hostCopy =
+    getHostTranslations(
       language
     );
 
@@ -197,6 +210,71 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        <Pressable
+          onPress={() =>
+            router.push(
+              "/hosts"
+            )
+          }
+          style={({
+            pressed,
+          }) => [
+            styles.manageHostsButton,
+
+            pressed &&
+              styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
+        >
+          <View
+            style={
+              styles.manageHostsIcon
+            }
+          >
+            <Ionicons
+              name="server-outline"
+              size={24}
+              color={
+                colors.primary
+              }
+            />
+          </View>
+
+          <View
+            style={
+              styles.manageHostsText
+            }
+          >
+            <Text
+              style={
+                styles.manageHostsTitle
+              }
+            >
+              {
+                hostCopy.manageHosts
+              }
+            </Text>
+
+            <Text
+              style={
+                styles.manageHostsDescription
+              }
+            >
+              {
+                hostCopy.manageHostsDescription
+              }
+            </Text>
+          </View>
+
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={
+              colors.textMuted
+            }
+          />
+        </Pressable>
 
         <Pressable
           onPress={
@@ -426,6 +504,84 @@ const styles =
         typography.caption,
 
       lineHeight: 20,
+    },
+
+    manageHostsButton: {
+      minHeight: 86,
+
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      gap:
+        spacing.md,
+
+      backgroundColor:
+        colors.surface,
+
+      borderColor:
+        colors.border,
+
+      borderWidth: 1,
+
+      borderRadius:
+        radius.lg,
+
+      padding:
+        spacing.md,
+
+      marginBottom:
+        spacing.lg,
+    },
+
+    manageHostsIcon: {
+      width:
+        touchTarget.minimum,
+
+      height:
+        touchTarget.minimum,
+
+      alignItems:
+        "center",
+
+      justifyContent:
+        "center",
+
+      backgroundColor:
+        colors.primarySoft,
+
+      borderRadius:
+        radius.md,
+    },
+
+    manageHostsText: {
+      flex: 1,
+    },
+
+    manageHostsTitle: {
+      color:
+        colors.textPrimary,
+
+      fontSize:
+        typography.body,
+
+      fontWeight:
+        "700",
+
+      marginBottom:
+        spacing.xs,
+    },
+
+    manageHostsDescription: {
+      color:
+        colors.textSecondary,
+
+      fontSize:
+        typography.small,
+
+      lineHeight: 18,
     },
 
     logoutButton: {

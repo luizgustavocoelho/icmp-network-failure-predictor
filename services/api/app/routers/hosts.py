@@ -214,6 +214,27 @@ def update_host(
     return host
 
 
+@router.delete(
+    "/{host_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_host(
+    host_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user
+    ),
+) -> None:
+    host = get_owned_host(
+        db=db,
+        host_id=host_id,
+        user_id=current_user.id,
+    )
+
+    db.delete(host)
+    db.commit()
+
+
 @router.post(
     "/{host_id}/measure",
     response_model=MeasurementResponse,

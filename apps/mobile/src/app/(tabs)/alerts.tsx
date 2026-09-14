@@ -20,6 +20,9 @@ import {
   useState,
 } from "react";
 
+import SelectedHostCard
+  from "../../components/SelectedHostCard";
+
 import {
   colors,
   radius,
@@ -28,12 +31,15 @@ import {
 } from "../../constants/theme";
 
 import {
+  useHosts,
+} from "../../context/HostContext";
+
+import {
   useLanguage,
 } from "../../context/LanguageContext";
 
 import {
   getAlerts,
-  getHosts,
 } from "../../services/api";
 
 import {
@@ -47,6 +53,13 @@ export default function AlertsScreen() {
     language,
     t,
   } = useLanguage();
+
+  const {
+    selectedHost,
+  } = useHosts();
+
+  const selectedHostId =
+    selectedHost?.id ?? null;
 
   const [
     alerts,
@@ -86,23 +99,14 @@ export default function AlertsScreen() {
 
           setError(false);
 
-          const hosts =
-            await getHosts();
-
-          const activeHost =
-            hosts.find(
-              (host) =>
-                host.is_active
-            ) ?? hosts[0];
-
-          if (!activeHost) {
+          if (selectedHostId === null) {
             setAlerts([]);
             return;
           }
 
           const data =
             await getAlerts(
-              activeHost.id,
+              selectedHostId,
               100
             );
 
@@ -120,7 +124,7 @@ export default function AlertsScreen() {
           setRefreshing(false);
         }
       },
-      []
+      [selectedHostId]
     );
 
 
@@ -352,6 +356,8 @@ export default function AlertsScreen() {
             "alertsDescription"
           )}
         </Text>
+
+        <SelectedHostCard />
 
         {loading && (
           <View

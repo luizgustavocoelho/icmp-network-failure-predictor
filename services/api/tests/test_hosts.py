@@ -170,3 +170,45 @@ def test_update_nonexistent_host(client):
     )
 
     assert response.status_code == 404
+
+
+def test_delete_host(client):
+    create_response = client.post(
+        "/hosts",
+        json={
+            "name": "Delete Test Host",
+            "ip_address": "9.9.9.9",
+            "description": "Host created for deletion test",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    host_id = create_response.json()["id"]
+
+    delete_response = client.delete(
+        f"/hosts/{host_id}"
+    )
+
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+
+    get_response = client.get(
+        f"/hosts/{host_id}"
+    )
+
+    assert get_response.status_code == 404
+    assert get_response.json() == {
+        "detail": "Host not found."
+    }
+
+
+def test_delete_nonexistent_host(client):
+    response = client.delete(
+        "/hosts/999999"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Host not found."
+    }
