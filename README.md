@@ -545,11 +545,16 @@ Swagger documentation:
 http://localhost:8000/docs
 ```
 
-Main API capabilities include:
+V2 includes authentication and user-scoped host access.
+
+Main capabilities include:
 
 ```text
-Host management
+User registration and login
+Authenticated profile
+Per-user host management
 ICMP measurements
+Automatic monitoring
 Measurement history
 Measurement summaries
 Alerts
@@ -559,18 +564,27 @@ Prediction history
 Activity recommendations
 ```
 
----
-
 ## 📡 Main API Endpoints
 
-Examples include:
+Authentication:
+
+```http
+POST /auth/register
+POST /auth/login
+GET /auth/me
+```
+
+Host management:
 
 ```http
 POST /hosts
 GET /hosts
 GET /hosts/{host_id}
 PUT /hosts/{host_id}
+DELETE /hosts/{host_id}
 ```
+
+Measurements:
 
 ```http
 POST /hosts/{host_id}/measure
@@ -578,15 +592,21 @@ GET /hosts/{host_id}/measurements
 GET /hosts/{host_id}/measurements/summary
 ```
 
+Alerts:
+
 ```http
 GET /hosts/{host_id}/alerts
 ```
+
+Predictions:
 
 ```http
 GET /hosts/{host_id}/predictions
 GET /hosts/{host_id}/predictions/latest
 POST /hosts/{host_id}/predictions/forecast
 ```
+
+Recommendations:
 
 ```http
 GET /hosts/{host_id}/predictions/{prediction_id}/recommendations
@@ -598,13 +618,12 @@ For the complete API documentation, see:
 docs/api.md
 ```
 
----
-
 ## 🗄 Data Model
 
 The main persistent entities are:
 
 ```text
+Users
 Hosts
 Measurements
 Alerts
@@ -614,20 +633,22 @@ Predictions
 Conceptually:
 
 ```text
-Host
- │
- ├── Measurements
- │      │
- │      └── Alerts
- │
- └── Predictions
-        │
-        └── Activity Recommendations
+User
+ |
+ +-- Hosts
+      |
+      +-- Measurements
+      |      |
+      |      +-- Alerts
+      |
+      +-- Predictions
+             |
+             +-- Activity Recommendations
 ```
 
-Measurements are stored historically and reused by the prediction engine.
+Hosts are owned by users. IP uniqueness is scoped to `(user_id, ip_address)`, allowing different users to monitor the same destination independently.
 
----
+Measurements are stored historically and reused by the prediction engine.
 
 ## 📊 Prediction Model
 
@@ -751,13 +772,13 @@ A single observation is **not** used to claim global statistical prediction accu
 
 The backend contains an extensive automated test suite.
 
-Final regression result:
+Final V2 regression result:
 
 ```text
-82 tests collected
-82 passed
+101 passed
 0 failed
 6 warnings
+3.04 seconds
 ```
 
 Success rate:
@@ -771,11 +792,14 @@ The warnings are dependency deprecation warnings and do not represent functional
 Test areas include:
 
 ```text
-Host management
+Authentication
+Multi-user ownership and isolation
+Host CRUD
 IPv4 validation
 IPv6 validation
 ICMP parsing
 ICMP monitoring
+Automatic monitoring scheduler
 Measurement persistence
 Measurement history
 Summary calculations
@@ -788,7 +812,12 @@ Recommendations
 API validation
 ```
 
----
+The mobile project also passed:
+
+```text
+npx tsc --noEmit
+npm run lint
+```
 
 ## ✅ Validated Network States
 
@@ -1021,45 +1050,107 @@ classified, stored, predicted and presented.
 
 ---
 
-## 📱 Running the Mobile Application
+## V2 Runtime and Android Validation
 
-Navigate to:
-
-```bash
-cd apps/mobile
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Configure the backend address using an environment variable.
-
-Example:
-
-```env
-EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:8000
-```
-
-Then start Expo:
-
-```bash
-npx expo start
-```
-
-For a physical phone, the computer and mobile device must be able to communicate through the same local network.
-
-Do not use:
+The validated V2 demo architecture is:
 
 ```text
-127.0.0.1
+Standalone Android APK
+        |
+        | HTTPS over Wi-Fi / 4G / 5G
+        v
+Tailscale Funnel
+        |
+        v
+FastAPI monitoring node
+        |
+        +--> Operating-system ICMP ping
+        +--> Automatic monitoring scheduler
+        |
+        v
+Neon PostgreSQL
 ```
 
-as the computer address from a physical phone.
+The PostgreSQL database is hosted on Neon.
 
----
+The public API was validated through Tailscale Funnel, and the standalone Android APK was installed and tested on a physical phone using 5G with Wi-Fi disabled.
+
+The APK does not require Expo Go or the local Metro server after installation.
+
+Important architectural interpretation:
+
+> ICMP measurements are executed from the backend monitoring node. They represent the network path from that node to the monitored host, not the end user's phone connection.
+
+The current public demo still depends on the monitoring PC being powered on and running FastAPI.
+
+The backend is also container-ready through `services/api/Dockerfile`.
+
+## 📱 Running the Mobile Application
+
+The mobile client was developed using:
+
+```text
+React Native
+Expo
+Expo Router
+TypeScript
+Expo SecureStore
+AsyncStorage
+React Native SVG
+```
+
+The final protected application contains five main tabs:
+
+```text
+Overview
+History
+Forecast
+Alerts
+Profile
+```
+
+Host management is available as a separate protected route from Profile.
+
+### Overview
+
+Displays:
+
+```text
+Selected monitored host
+Current network condition
+Latest latency
+Latest packet loss
+Latest prediction
+Live backend updates
+```
+
+### History
+
+Displays historical measurements, 24h / 7d / 30d filters, statistics, charts and recent measurements.
+
+### Forecast
+
+Allows the user to choose a future date/time, generate a prediction and view predicted latency, packet loss, status and activity recommendations.
+
+### Alerts
+
+Displays warning and critical alerts, summaries, recent alerts and empty/error/loading states.
+
+### Profile and Host Management
+
+The authenticated profile area provides account information, logout and access to My Hosts.
+
+The host-management flow supports:
+
+```text
+Create host
+Edit host
+Pause / reactivate host
+Select active host
+Delete host
+```
+
+The selected host is shared across Overview, History, Forecast and Alerts.
 
 ## ⚙️ Running the Backend
 
@@ -1112,7 +1203,7 @@ pytest -v
 Validated project result:
 
 ```text
-82 passed
+101 passed
 0 failed
 ```
 
@@ -1185,7 +1276,7 @@ Documents `OK`, `RISK` and `FAILURE` rules.
 docs/testing.md
 ```
 
-Documents automated and manual validation, including the final `82/82` regression result.
+Documents automated and manual validation, including the final `101/101` regression result.
 
 ### Network Simulation
 
@@ -1278,30 +1369,37 @@ Accessibility Implementation        ✅
 Cisco Packet Tracer                 ✅
 Network Failure Simulation          ✅
 Network Recovery Simulation         ✅
-82/82 Backend Tests                 ✅
+101/101 Backend Tests                 ✅
 Prediction vs Actual Validation     ✅
-Technical Documentation             ✅
+User Authentication                  ✅
+Multi-user Isolation                   ✅
+Automatic Monitoring Scheduler         ✅
+Neon PostgreSQL                        ✅
+Public HTTPS API                       ✅
+Standalone Android APK                 ✅
+5G End-to-End Validation               ✅
+Docker-ready Backend                   ✅
+Technical Documentation                ✅
 ```
 
 ---
 
 ## ⚠️ Current Limitations
 
-The project is currently a functional academic prototype.
+The project is a functional academic prototype.
 
-The current scope does not include:
+Current limitations include:
 
 ```text
-Production cloud deployment
-User authentication
-Multi-tenant accounts
-Distributed monitoring agents
-Operating-system push notifications
-WebSocket real-time streaming
-Machine-learning model training
-Formal prediction confidence
-Commercial SLA guarantees
-Formal multi-device accessibility certification
+Backend availability currently depends on the monitoring PC
+ICMP measurements originate from the backend monitoring node
+No distributed per-user monitoring agent
+No operating-system push notifications
+No WebSocket real-time streaming
+No formal prediction-confidence model
+No machine-learning model training
+No commercial SLA guarantees
+No formal certification-level multi-device accessibility audit
 ```
 
 The ICMP result must also be interpreted correctly:
@@ -1318,22 +1416,15 @@ every service on the destination is unavailable
 
 Some systems intentionally block ICMP while continuing to provide other network services.
 
----
-
 ## 🔮 Future Improvements
 
 Possible next steps include:
 
 ```text
-Cloud deployment
-Dockerized services
-Managed PostgreSQL
-Background monitoring workers
-Continuous scheduling
+Independent 24/7 cloud compute
+Distributed per-user monitoring agents
 Push notifications
 WebSocket updates
-User authentication
-Multiple monitored hosts in the mobile UI
 Advanced analytics
 Long-term prediction validation
 Prediction confidence scoring
@@ -1345,9 +1436,8 @@ HTTP/DNS/TCP health checks
 Anomaly detection
 Observability and structured logging
 CI/CD deployment
+Formal TalkBack / VoiceOver audit
 ```
-
----
 
 ## 💡 Key Engineering Decisions
 
@@ -1443,7 +1533,7 @@ Responsive layouts
 ### Software Quality
 
 ```text
-82 automated tests
+101 automated tests
 Controlled scenarios
 Real network tests
 Integration validation
@@ -1532,7 +1622,7 @@ Accessibility validation                PASSED ✅
 Packet Tracer normal operation          PASSED ✅
 Packet Tracer failure                   PASSED ✅
 Packet Tracer recovery                  PASSED ✅
-Automated backend regression            82/82 ✅
+Automated backend regression            101/101 ✅
 ```
 
 ---
