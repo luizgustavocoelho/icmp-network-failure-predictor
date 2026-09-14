@@ -1,7 +1,11 @@
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 API_DIRECTORY = (
@@ -15,11 +19,13 @@ ENV_FILE = API_DIRECTORY / ".env"
 
 
 class Settings(BaseSettings):
-    db_host: str
-    db_port: int
-    db_name: str
-    db_user: str
-    db_password: str
+    database_url: str | None = None
+
+    db_host: str | None = None
+    db_port: int | None = None
+    db_name: str | None = None
+    db_user: str | None = None
+    db_password: str | None = None
 
     auto_monitor_enabled: bool = False
 
@@ -54,11 +60,73 @@ class Settings(BaseSettings):
     )
 
     @property
-    def database_url(self) -> str:
+    def sqlalchemy_database_url(self) -> str:
+        if self.database_url:
+            url = self.database_url.strip()
+
+            if url.startswith(
+                "postgresql+psycopg://"
+            ):
+                return url
+
+            if url.startswith(
+                "postgresql://"
+            ):
+                return url.replace(
+                    "postgresql://",
+                    "postgresql+psycopg://",
+                    1,
+                )
+
+            if url.startswith(
+                "postgres://"
+            ):
+                return url.replace(
+                    "postgres://",
+                    "postgresql+psycopg://",
+                    1,
+                )
+
+            raise ValueError(
+                "DATABASE_URL must use a "
+                "PostgreSQL connection string."
+            )
+
+        local_values = {
+            "DB_HOST": self.db_host,
+            "DB_PORT": self.db_port,
+            "DB_NAME": self.db_name,
+            "DB_USER": self.db_user,
+            "DB_PASSWORD": self.db_password,
+        }
+
+        missing = [
+            key
+            for key, value
+            in local_values.items()
+            if value is None
+        ]
+
+        if missing:
+            raise ValueError(
+                "Database configuration is missing. "
+                "Set DATABASE_URL or provide: "
+                + ", ".join(missing)
+            )
+
+        username = quote_plus(
+            str(self.db_user)
+        )
+
+        password = quote_plus(
+            str(self.db_password)
+        )
+
         return (
-            f"postgresql+psycopg://"
-            f"{self.db_user}:{self.db_password}"
-            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            "postgresql+psycopg://"
+            f"{username}:{password}"
+            f"@{self.db_host}:{self.db_port}"
+            f"/{self.db_name}"
         )
 
 
