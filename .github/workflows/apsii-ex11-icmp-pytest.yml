@@ -1,0 +1,63 @@
+name: APSII - Exercício 11.1 (ICMP / Pytest)
+
+on:
+  pull_request:
+    paths:
+      - "services/api/**"
+      - ".github/workflows/apsii-ex11-icmp-pytest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest-com-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: icmp_testing_only
+          POSTGRES_DB: icmp_ex11_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d icmp_ex11_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Exclusivamente para a base efêmera do job; nenhum segredo real é necessário.
+      DATABASE_URL: postgresql+psycopg://postgres:icmp_testing_only@localhost:5432/icmp_ex11_test
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: '5432'
+      TEST_DB_NAME: icmp_ex11_test
+      TEST_DB_USER: postgres
+      TEST_DB_PASSWORD: icmp_testing_only
+      AUTH_JWT_SECRET: ci-ex11-test-only-do-not-use-in-production
+      AUTO_MONITOR_ENABLED: 'false'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: services/api/requirements.txt
+      - name: Instalar dependências oficiais
+        run: python -m pip install -r services/api/requirements.txt
+      - name: Rodar suíte completa (PostgreSQL efêmero)
+        working-directory: services/api
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee pytest-suite-completa.log
+      - name: Guardar evidência (inclusive se falhar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ex11-pytest-full-${{ github.run_number }}
+          path: services/api/pytest-suite-completa.log
+          if-no-files-found: warn
