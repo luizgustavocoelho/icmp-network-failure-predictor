@@ -1,0 +1,152 @@
+name: APSII - Exercicio 11.2 (ICMP / Coverage)
+
+on:
+  pull_request:
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/apsii-ex112-icmp-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest-cobertura-com-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: icmp_testing_only
+          POSTGRES_DB: icmp_ex112_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d icmp_ex112_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:icmp_testing_only@localhost:5432/icmp_ex112_test
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: '5432'
+      TEST_DB_NAME: icmp_ex112_test
+      TEST_DB_USER: postgres
+      TEST_DB_PASSWORD: icmp_testing_only
+      AUTH_JWT_SECRET: test-only-ex112-not-for-production
+      AUTO_MONITOR_ENABLED: 'false'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: services/api/requirements.txt
+      - name: Instalar dependencias e pytest-cov
+        run: |
+          python -m pip install -r services/api/requirements.txt
+          python -m pip install 'pytest-cov>=6,<8'
+      - name: Obter branch main para medir baseline
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline-main
+      - name: Medir baseline (main, antes dos novos testes)
+        working-directory: baseline-main/services/api
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q \
+            --cov=app \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-baseline.xml \
+            2>&1 | tee pytest-baseline.log
+      - name: Executar suite e medir instrucoes/branches
+        working-directory: services/api
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q \
+            --cov=app \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:coverage-html \
+            2>&1 | tee pytest-cobertura.log
+      - name: Comparar cobertura e registrar lacunas reais
+        if: success()
+        shell: bash
+        run: |
+          python - <<'PYTHON'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          prior = Path('baseline-main/services/api/coverage-baseline.xml')
+          current = Path('services/api/coverage.xml')
+          summary = Path('services/api/cobertura-resumo-ex112.md')
+          baseline_xml = ElementTree.parse(prior).getroot()
+          current_xml = ElementTree.parse(current).getroot()
+
+          def pct(root, attr):
+              return round(float(root.attrib[attr]) * 100, 2)
+
+          old_lines, now_lines = pct(baseline_xml, 'line-rate'), pct(current_xml, 'line-rate')
+          old_branches, now_branches = pct(baseline_xml, 'branch-rate'), pct(current_xml, 'branch-rate')
+          lines = [
+              '# Exercício 11.2 — comparação de cobertura real',
+              '',
+              '| Métrica geral (app) | main (baseline) | branch 11.2 | Diferença |',
+              '|---|---:|---:|---:|',
+              f'| Linhas Python | {old_lines:.2f}% | {now_lines:.2f}% | {now_lines-old_lines:+.2f} p.p. |',
+              f'| Branches Python | {old_branches:.2f}% | {now_branches:.2f}% | {now_branches-old_branches:+.2f} p.p. |',
+              '',
+              '## Classes e arquivos relevantes',
+              '',
+              '| Arquivo | Linhas | Branches | Linha sem cobertura |',
+              '|---|---:|---:|---|',
+          ]
+
+          wanted = (
+              'app/models/prediction.py',
+              'app/schemas/prediction.py',
+              'app/services/prediction_service.py',
+          )
+          classes = current_xml.findall('.//class')
+          for target in wanted:
+              found = next((c for c in classes if c.attrib.get('filename', '').replace('\\','/').endswith(target)), None)
+              if found is None:
+                  lines.append(f'| {target} | Não encontrado no XML | — | — |')
+                  continue
+              line_percent = float(found.attrib.get('line-rate', 0.0)) * 100
+              branches = [line for line in found.findall('./lines/line') if line.attrib.get('branch') == 'true']
+              branch_percent = f"{float(found.attrib['branch-rate']) * 100:.2f}%" if branches else 'n/a'
+              uncovered = [line.attrib['number'] for line in found.findall('./lines/line') if int(line.attrib.get('hits', 0)) == 0]
+              first_uncovered = 'linha ' + uncovered[0] if uncovered else 'nenhuma encontrada'
+              lines.append(f'| `{target}` | {line_percent:.2f}% | {branch_percent} | {first_uncovered} |')
+
+          lines.extend([
+              '',
+              '> Percentuais são do coverage.py/pytest-cov sobre Python; não equivalem diretamente às',
+              '> instruções do JaCoCo. Constraints de PostgreSQL NÃO integram a cobertura de branches Python.',
+              '> Uma linha não executada é pista para análise, não demonstra automaticamente um defeito.',
+          ])
+          summary.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print(summary.read_text(encoding='utf-8'))
+          PYTHON
+          cat services/api/cobertura-resumo-ex112.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar evidencias mesmo se houver falha
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ex112-pytest-cobertura-${{ github.run_number }}
+          path: |
+            services/api/pytest-cobertura.log
+            services/api/coverage.xml
+            services/api/cobertura-resumo-ex112.md
+            services/api/coverage-html/
+            baseline-main/services/api/pytest-baseline.log
+            baseline-main/services/api/coverage-baseline.xml
+          if-no-files-found: warn
