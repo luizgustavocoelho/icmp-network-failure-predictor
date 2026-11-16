@@ -1687,3 +1687,59 @@ Predict
     ↓
 Recommend
 ```
+
+## 📘 Guia rápido de execução — Squad 7
+
+Esta seção facilita a configuração e a execução do ICMP Network Failure Predictor por novos integrantes da equipe e avaliadores acadêmicos.
+
+### Pré-requisitos
+
+- Python e Git instalados.
+- PostgreSQL disponível e configurado.
+- Dependências do backend instaladas.
+- Credenciais e variáveis de ambiente configuradas localmente.
+
+### Executar o backend no Windows
+
+No terminal PowerShell, a partir da raiz do repositório:
+
+```powershell
+cd services/api
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Copie o arquivo `.env.example` para `.env` e configure a conexão com o PostgreSQL e as demais variáveis exigidas. Não publique senhas nem arquivos `.env`.
+
+Depois, execute:
+
+```powershell
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Verificar a API
+
+- Saúde da aplicação: http://localhost:8000/health
+- Swagger UI: http://localhost:8000/docs
+- Contrato OpenAPI: http://localhost:8000/openapi.json
+
+Os endpoints protegidos exigem autenticação. Para executar a suíte de testes, a partir de `services/api`, utilize:
+
+```powershell
+pytest -v
+```
+
+### Limitações do projeto
+
+- O monitoramento ICMP é executado no computador ou servidor que hospeda o backend, não diretamente no celular.
+- O mecanismo atual de previsão utiliza tendências estatísticas lineares, não um modelo de machine learning treinado.
+- A confiança estatística formal das previsões ainda não foi implementada.
+- Um host que não responde a ICMP não necessariamente está com todos os seus serviços indisponíveis.
+- A disponibilidade do monitoramento depende da execução do backend.
+
+### Organização e colaboração
+
+As atividades acadêmicas da Squad 7 estão organizadas em `docs/atividades-academicas/sprint-4-5/`.
+
+As melhorias devem ser realizadas em branches separadas, registradas em commits e submetidas a pull requests para revisão por pares antes de qualquer integração à branch principal.
